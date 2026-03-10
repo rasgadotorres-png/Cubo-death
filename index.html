@@ -1,44 +1,19 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Neon Dash - 100% Reliable</title>
+    <title>Neon Dash - Dynamic Backgrounds</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body { margin: 0; overflow: hidden; background: #000; touch-action: none; font-family: 'Arial Black', sans-serif; }
-        #ui { position: fixed; top: 10px; width: 100%; text-align: center; color: #0ff; font-size: 18px; z-index: 10; pointer-events: none; }
-        
-        /* Pantallas de Menú con Botones HTML Reales */
-        .overlay { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(5, 5, 20, 0.95); 
-            display: flex; flex-direction: column; justify-content: center; align-items: center; 
-            z-index: 1000; 
-        }
-
+        #ui { position: fixed; top: 10px; width: 100%; text-align: center; color: #fff; font-size: 18px; z-index: 10; pointer-events: none; text-shadow: 0 0 5px #000; }
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; }
         h1 { color: #0fcc; font-size: 45px; text-shadow: 0 0 20px #0fcc; margin-bottom: 30px; }
-        
-        /* Estilo del Botón Blindado */
-        .btn-real {
-            padding: 20px 60px;
-            font-size: 28px;
-            background-color: #f05;
-            color: white;
-            border: 4px solid white;
-            border-radius: 15px;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 0 20px #f05;
-            -webkit-appearance: none; /* Quita estilos de sistema en iOS/Android */
-        }
-        
-        .btn-real:active { background-color: #b04; transform: scale(0.95); }
+        .btn-real { padding: 20px 60px; font-size: 28px; background-color: #f05; color: white; border: 4px solid white; border-radius: 15px; font-weight: bold; cursor: pointer; box-shadow: 0 0 20px #f05; -webkit-appearance: none; }
     </style>
 </head>
 <body>
 
-    <div id="ui">
-        LVL: <span id="lvlNum">1</span> | <span id="percent">0</span>%
-    </div>
+    <div id="ui">LVL: <span id="lvlNum">1</span> | <span id="percent">0</span>%</div>
 
     <div id="menu" class="overlay">
         <h1>NEON DASH</h1>
@@ -68,20 +43,21 @@
     const player = { x: 150, y: groundY - 40, w: 40, h: 40, dy: 0, rot: 0, onGround: false };
     const particles = [];
 
+    // --- CONFIGURACIÓN DE NIVELES CON COLORES ---
+    // Estructura: blocks: [[tipo, altura], ...], color: 'color_de_fondo'
     const allLevels = {
-        1: [0,0,2,0,1,0,2,2,0,1,1,0,2,0,0,0],
-        2: [0,2,2,0,1,1,0,2,0,2,1,0,2,2,2,0,0],
-        3: [0,2,0,1,2,0,1,1,2,2,0,1,1,2,2,2,0,0],
-        4: [0,1,1,2,0,1,2,1,1,2,2,1,1,2,2,2,0,0],
-        5: [0,2,2,2,0,1,1,1,2,0,2,2,1,1,2,2,0,0],
-        6: [0,1,2,1,2,1,2,0,1,1,2,2,2,1,1,1,0,0],
-        7: [0,2,2,0,2,2,0,1,1,1,2,2,2,2,1,1,0,0],
-        8: [0,1,1,1,2,2,2,2,1,1,1,2,2,2,2,0,0,0],
-        9: [0,2,1,2,1,2,1,2,1,2,2,2,2,2,2,0,0,0],
-        10: [0,2,2,2,1,1,1,2,2,2,1,1,1,2,2,2,2,2,2]
+        1: { color: '#0a0a20', blocks: [[1,0], [1,0], [2,0], [1,50], [1,50], [2,50], [1,100], [0,0]] }, // Azul Oscuro
+        2: { color: '#200a0a', blocks: [[1,0], [2,0], [1,50], [1,100], [2,100], [1,50], [1,0]] },      // Rojo Oscuro
+        3: { color: '#0a200a', blocks: [[1,0], [1,50], [2,50], [1,100], [1,50], [2,50], [1,0]] },      // Verde Bosque
+        4: { color: '#150015', blocks: [[1,0], [1,0], [1,80], [2,80], [1,0], [1,80], [1,160]] },       // Púrpura
+        5: { color: '#1a1a00', blocks: [[1,0], [2,0], [1,100], [2,100], [1,0], [1,100], [2,100]] },    // Amarillo/Oro
+        6: { color: '#001a1a', blocks: [[1,0], [1,50], [1,100], [1,150], [2,150], [1,0]] },            // Cian/Turquesa
+        7: { color: '#2b1a00', blocks: [[1,0], [1,80], [2,80], [1,160], [2,160], [1,0]] },            // Naranja
+        8: { color: '#1a000d', blocks: [[1,0], [1,100], [1,0], [1,100], [2,100], [1,0]] },            // Rosa Fuerte
+        9: { color: '#000000', blocks: [[1,0], [2,0], [1,120], [2,120], [1,50], [2,50]] },            // Negro Puro
+        10: { color: '#1c1c1c', blocks: [[1,0], [1,50], [1,100], [1,150], [1,200], [2,200], [1,0]] }   // Gris Metal
     };
 
-    // FUNCIÓN DE INICIO 100% SEGURA
     function launchGame() {
         document.getElementById('menu').style.display = 'none';
         document.getElementById('victory').style.display = 'none';
@@ -90,21 +66,19 @@
         player.y = groundY - 40;
         player.dy = 0;
         player.rot = 0;
-        speed = 8.5 + (currentLvl * 0.5);
+        speed = 8.5 + (currentLvl * 0.4);
         gameActive = true;
     }
 
-    // Vinculamos los botones HTML
     document.getElementById('startBtn').onclick = launchGame;
     document.getElementById('nextBtn').onclick = function() {
         currentLvl++;
-        if (currentLvl > 10) { alert("¡DIOS DEL NEON! Pasaste todo."); currentLvl = 1; }
+        if (currentLvl > 10) { alert("¡MAESTRO DEL DASH!"); currentLvl = 1; }
         launchGame();
     };
 
     function update() {
         if (!gameActive) return;
-
         distance += speed;
         player.dy += 1.1;
         player.y += player.dy;
@@ -115,8 +89,8 @@
             if (particles[i].o <= 0) particles.splice(i,1);
         }
 
-        const levelData = allLevels[currentLvl];
-        const totalDist = levelData.length * 280;
+        const lvl = allLevels[currentLvl];
+        const totalDist = lvl.blocks.length * 300;
 
         if (distance > totalDist + 500) {
             gameActive = false;
@@ -125,17 +99,21 @@
         }
 
         let standingOn = null;
-        if (player.y > groundY - 40) { player.y = groundY-40; player.dy = 0; standingOn = "ground"; }
+        if (player.y > groundY - 40) { player.y = groundY - 40; player.dy = 0; standingOn = "ground"; }
 
-        levelData.forEach((type, i) => {
-            let ox = 800 + (i * 280) - distance;
+        lvl.blocks.forEach((obj, i) => {
+            const type = obj[0]; const alt = obj[1];
+            let ox = 800 + (i * 300) - distance;
+            let oy = groundY - alt - 50;
+
             if (ox > player.x - 60 && ox < player.x + 60) {
-                if (type === 1) {
-                    if (player.y+40 <= groundY-30 && player.y+40+player.dy >= groundY-50 && player.x+40 > ox+5 && player.x < ox+45) {
-                        player.y = groundY-90; player.dy = 0; standingOn = "block";
-                    } else if (player.x+40 > ox+5 && player.x < ox+45 && player.y+40 > groundY-48) distance = 0;
-                } else if (type === 2) {
-                    if (player.x+28 > ox && player.x+12 < ox+50 && player.y+40 > groundY-35) distance = 0;
+                if (type === 1) { // Bloque
+                    if (player.y + 40 <= oy + 20 && player.y + 40 + player.dy >= oy && player.x + 35 > ox && player.x + 5 < ox + 50) {
+                        player.y = oy - 40; player.dy = 0; standingOn = "block";
+                    } else if (player.x + 40 > ox + 5 && player.x < ox + 45 && player.y + 40 > oy + 5 && player.y < oy + 45) distance = 0;
+                } else if (type === 2) { // Pico
+                    let py = groundY - alt;
+                    if (player.x + 28 > ox && player.x + 12 < ox + 50 && player.y + 40 > py - 35 && player.y < py) distance = 0;
                 }
             }
         });
@@ -150,20 +128,33 @@
     }
 
     function draw() {
-        ctx.fillStyle = '#050510'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // --- FONDO DINÁMICO ---
+        const lvlColor = allLevels[currentLvl].color;
+        ctx.fillStyle = lvlColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Efecto de gradiente sutil para profundidad
+        let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        grad.addColorStop(0, 'rgba(0,0,0,0.5)');
+        grad.addColorStop(1, 'transparent');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
         particles.forEach(p => { ctx.fillStyle = `rgba(0,255,204,${p.o})`; ctx.fillRect(p.x-distance*0.1, p.y, p.s, p.s); });
         ctx.fillStyle = '#0ff'; ctx.fillRect(0, groundY, canvas.width, 2);
 
-        const levelData = allLevels[currentLvl];
-        levelData.forEach((type, i) => {
-            let ox = 800 + (i * 280) - distance;
+        allLevels[currentLvl].blocks.forEach((obj, i) => {
+            const type = obj[0]; const alt = obj[1];
+            let ox = 800 + (i * 300) - distance;
+            let oy = groundY - alt - 50;
             if (ox < -100 || ox > canvas.width) return;
+
             if (type === 1) {
                 ctx.fillStyle = '#222'; ctx.strokeStyle = '#0ff'; ctx.lineWidth = 3;
-                ctx.fillRect(ox, groundY-50, 50, 50); ctx.strokeRect(ox, groundY-50, 50, 50);
+                ctx.fillRect(ox, oy, 50, 50); ctx.strokeRect(ox, oy, 50, 50);
             } else if (type === 2) {
                 ctx.fillStyle = '#f05'; ctx.beginPath();
-                ctx.moveTo(ox, groundY); ctx.lineTo(ox+25, groundY-50); ctx.lineTo(ox+50, groundY); ctx.fill();
+                ctx.moveTo(ox, groundY - alt); ctx.lineTo(ox+25, groundY - alt - 50); ctx.lineTo(ox+50, groundY - alt); ctx.fill();
             }
         });
 
@@ -175,12 +166,8 @@
         requestAnimationFrame(draw);
     }
 
-    // Salto para la pantalla (solo cuando el juego está activo)
-    window.addEventListener('touchstart', (e) => { 
-        if (gameActive) { isPressing = true; e.preventDefault(); }
-    }, {passive: false});
+    window.addEventListener('touchstart', (e) => { if (gameActive) { isPressing = true; e.preventDefault(); } }, {passive: false});
     window.addEventListener('touchend', () => isPressing = false);
-
     draw();
 </script>
 </body>
