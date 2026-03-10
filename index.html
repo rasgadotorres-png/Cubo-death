@@ -1,98 +1,129 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Neon Dash Ultra Fix</title>
+    <title>Neon Dash - Victory Edition</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        body { margin: 0; overflow: hidden; background: #ff0000; touch-action: none; font-family: sans-serif; }
-        #percent { position: fixed; top: 10px; width: 100%; text-align: center; color: #0ff; font-size: 24px; font-weight: bold; z-index: 100; }
-        #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; display: flex; justify-content: center; align-items: center; z-index: 1000; }
-        #btn { padding: 20px 50px; font-size: 25px; background: #0fcc; border: none; border-radius: 10px; font-weight: bold; }
+        body { margin: 0; overflow: hidden; background: #000; touch-action: none; font-family: sans-serif; }
+        #percent { position: fixed; top: 10px; width: 100%; text-align: center; color: #0ff; font-size: 22px; font-weight: bold; pointer-events: none; }
+        #victory { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,255,200,0.2); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 200; }
+        h2 { color: #fff; font-size: 40px; text-shadow: 0 0 20px #000; margin: 0; }
+        p { color: #fff; font-size: 18px; }
     </style>
 </head>
 <body>
     <div id="percent">0%</div>
-    <div id="overlay"><button id="btn">TAP TO START</button></div>
-    <canvas id="g"></canvas>
+    <div id="victory">
+        <h2>LEVEL COMPLETE!</h2>
+        <p>Toca para reiniciar</p>
+    </div>
+    <canvas id="gameCanvas"></canvas>
 
 <script>
-    const cvs = document.getElementById('g');
-    const ctx = cvs.getContext('2d');
-    const overlay = document.getElementById('overlay');
-    const btn = document.getElementById('btn');
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 
-    let active = false;
-    let dist = 0;
-    let isPress = false;
+    const groundY = canvas.height / 2 + 100;
+    const speed = 8.5;
+    const gravity = 1.1;
+    let distance = 0;
+    let isPressing = false;
+    let gameWon = false;
 
-    function init() {
-        cvs.width = window.innerWidth;
-        cvs.height = window.innerHeight;
-        overlay.style.display = 'none';
-        active = true;
-        loop();
-    }
+    const player = { x: 150, y: groundY - 40, w: 40, h: 40, dy: 0, rot: 0, onGround: false };
+    const level = [0,0,2,0,0,1,0,0,2,2,0,0,1,1,0,0,2,0,1,0,2,2,0,0,1,1,1,0,2,2,2,0,0,0]; // 0 al final para espacio
+    const totalDist = level.length * 280; // Distancia total del nivel
 
-    btn.addEventListener('touchstart', (e) => { e.preventDefault(); init(); }, {once: true});
-    btn.addEventListener('click', init, {once: true});
+    function update() {
+        if (gameWon) return;
 
-    const ground = window.innerHeight / 2 + 100;
-    const player = { y: ground - 40, dy: 0, rot: 0 };
-    const level = [0,0,2,0,1,0,2,2,0,1,1,2,0,2,2];
-
-    function loop() {
-        if(!active) return;
-
-        // Fondo
-        ctx.fillStyle = '#050510';
-        ctx.fillRect(0, 0, cvs.width, cvs.height);
-
-        // Suelo
-        ctx.fillStyle = '#0ff';
-        ctx.fillRect(0, ground, cvs.width, 2);
-
-        // Movimiento
-        dist += 8;
-        player.dy += 1.1;
+        distance += speed;
+        player.dy += gravity;
         player.y += player.dy;
 
-        if(player.y > ground - 40) {
-            player.y = ground - 40;
-            player.dy = 0;
-            if(isPress) player.dy = -16;
-            player.rot = Math.round(player.rot / 1.57) * 1.57;
-        } else {
-            player.rot += 0.2;
+        // Verificar si llegaste al final
+        if (distance > totalDist + 500) {
+            gameWon = true;
+            document.getElementById('victory').style.display = 'flex';
+            return;
         }
 
-        // Obstáculos
-        level.forEach((t, i) => {
-            let x = 600 + (i * 300) - dist;
-            if(t === 1) {
-                ctx.fillStyle = '#111'; ctx.strokeStyle = '#0ff';
-                ctx.fillRect(x, ground-50, 50, 50); ctx.strokeRect(x, ground-50, 50, 50);
-                if(150+40 > x && 150 < x+50 && player.y+40 > ground-50) dist = 0;
-            } else if(t === 2) {
-                ctx.fillStyle = '#f05'; ctx.beginPath();
-                ctx.moveTo(x, ground); ctx.lineTo(x+25, ground-50); ctx.lineTo(x+50, ground); ctx.fill();
-                if(150+30 > x && 150+10 < x+50 && player.y+40 > ground-35) dist = 0;
+        let standingOn = null;
+        if (player.y > groundY - player.h) {
+            player.y = groundY - player.h;
+            player.dy = 0;
+            standingOn = "ground";
+        }
+
+        level.forEach((type, i) => {
+            let ox = 800 + (i * 280) - distance;
+            if (ox > player.x - 60 && ox < player.x + 60) {
+                if (type === 1) { // BLOQUE
+                    if (player.y + player.h <= groundY - 30 && player.y + player.h + player.dy >= groundY - 50 &&
+                        player.x + player.w > ox + 5 && player.x < ox + 45) {
+                        player.y = groundY - 50 - player.h;
+                        player.dy = 0;
+                        standingOn = "block";
+                    } else if (player.x + player.w > ox + 5 && player.x < ox + 45 && player.y + player.h > groundY - 48) {
+                        distance = 0; 
+                    }
+                } else if (type === 2) { // PICO
+                    if (player.x + player.w - 12 > ox && player.x + 12 < ox + 50 && player.y + player.h > groundY - 35) {
+                        distance = 0; 
+                    }
+                }
             }
         });
 
-        // Cubo
-        ctx.save();
-        ctx.translate(150+20, player.y+20);
-        ctx.rotate(player.rot);
-        ctx.fillStyle = '#0fcc';
-        ctx.fillRect(-20, -20, 40, 40);
-        ctx.restore();
+        player.onGround = (standingOn !== null);
+        if (player.onGround) {
+            player.rot = Math.round(player.rot / (Math.PI/2)) * (Math.PI/2);
+            if (isPressing) { player.dy = -16.5; player.onGround = false; }
+        } else {
+            player.rot += 0.18;
+        }
 
-        document.getElementById('percent').innerText = Math.floor(dist/50) + "%";
-        requestAnimationFrame(loop);
+        // Porcentaje real (sin pasar de 100)
+        let prog = Math.floor((distance / totalDist) * 100);
+        document.getElementById('percent').innerText = Math.min(prog, 100) + "%";
     }
 
-    window.addEventListener('touchstart', () => isPress = true);
-    window.addEventListener('touchend', () => isPress = false);
+    function draw() {
+        ctx.fillStyle = '#050510'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#0ff'; ctx.fillRect(0, groundY, canvas.width, 2);
+
+        level.forEach((type, i) => {
+            let ox = 800 + (i * 280) - distance;
+            if (ox < -100 || ox > canvas.width) return;
+            if (type === 1) {
+                ctx.fillStyle = '#222'; ctx.strokeStyle = '#0ff'; ctx.lineWidth = 3;
+                ctx.fillRect(ox, groundY-50, 50, 50); ctx.strokeRect(ox, groundY-50, 50, 50);
+            } else if (type === 2) {
+                ctx.fillStyle = '#f05'; ctx.beginPath();
+                ctx.moveTo(ox, groundY); ctx.lineTo(ox+25, groundY-50); ctx.lineTo(ox+50, groundY); ctx.fill();
+            }
+        });
+
+        ctx.save();
+        ctx.translate(player.x + 20, player.y + 20);
+        ctx.rotate(player.rot);
+        ctx.fillStyle = '#0fcc'; ctx.fillRect(-20, -20, 40, 40);
+        ctx.restore();
+
+        update();
+        requestAnimationFrame(draw);
+    }
+
+    window.addEventListener('touchstart', (e) => {
+        if (gameWon) location.reload();
+        isPressing = true;
+        e.preventDefault();
+    }, {passive: false});
+
+    window.addEventListener('touchend', () => isPressing = false);
+    draw();
 </script>
 </body>
 </html>
