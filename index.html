@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Death Cube - Final Precision</title>
+    <title>Death Cube - Color Shift</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        body { margin: 0; overflow: hidden; background: #000; touch-action: none; font-family: 'Arial Black', sans-serif; }
+        body { margin: 0; overflow: hidden; background: #050510; touch-action: none; font-family: 'Arial Black', sans-serif; transition: background 1.5s ease; }
         #ui { position: fixed; top: 10px; width: 100%; text-align: center; color: #fff; font-size: 16px; z-index: 5; pointer-events: none; }
         .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
         h1 { color: #f05; font-size: 45px; text-shadow: 0 0 20px #f05; margin: 0; }
@@ -22,7 +22,7 @@
     </div>
 
     <div id="victory" class="overlay" style="display:none">
-        <h1 style="color: #0fcc">LEVEL COMPLETE</h1>
+        <h1 style="color: #0fcc">COMPLETE!</h1>
         <button class="btn-real" id="nextLvlBtn" style="background:#f05; color:white;">NEXT LEVEL</button>
     </div>
 
@@ -38,10 +38,9 @@
     let currentLvl = 1;
     let distance = 0;
     let isPressing = false;
+    let canJump = true;
     let gameActive = false;
     let levelStarted = false;
-    
-    // REDUCIDO EL ESPACIO (Diferencia entre bloques más corta para que alcances a saltar)
     const step = 220; 
 
     const player = { x: 150, y: voidLine - 90, dy: 0, rot: 0, onG: true };
@@ -50,26 +49,36 @@
     
     function createFairLevel(pattern) {
         let level = [...safeStart];
-        for(let i=0; i<10; i++) { level = level.concat(pattern); }
+        for(let i=0; i<15; i++) { level = level.concat(pattern); } // Niveles aún más largos
         level.push([1,0],[1,0],[1,0]);
         return level;
     }
 
     const levelsData = {
-        1: createFairLevel([[1,0],[2,0],[1,50],[1,50],[2,50],[1,0]]),
-        2: createFairLevel([[1,0],[1,100],[2,100],[1,0],[2,0],[1,0]]),
-        3: createFairLevel([[2,0],[1,80],[2,80],[1,0],[2,0],[1,120]])
+        1: createFairLevel([[1,0],[2,0],[1,0],[1,60],[2,60],[1,0]]),
+        2: createFairLevel([[1,0],[1,100],[2,100],[1,0],[2,0],[1,50]]),
+        3: createFairLevel([[2,0],[1,80],[2,80],[1,0],[2,0],[1,140]])
     };
+
+    function updateBackground(p) {
+        // Cambia el color del body según el porcentaje
+        if (p < 25) document.body.style.background = "#050510";
+        else if (p < 50) document.body.style.background = "#150520";
+        else if (p < 75) document.body.style.background = "#051520";
+        else if (p < 100) document.body.style.background = "#200510";
+    }
 
     function initLevel() {
         document.getElementById('menu').style.display = 'none';
         document.getElementById('victory').style.display = 'none';
+        document.body.style.background = "#050510";
         distance = 0;
         levelStarted = false;
         player.y = voidLine - 90;
         player.dy = 0;
         player.rot = 0;
         player.onG = true;
+        canJump = true;
         gameActive = true;
     }
 
@@ -83,23 +92,27 @@
     function update() {
         if (!gameActive) return;
         if (!levelStarted) {
-            if (isPressing) { 
+            if (isPressing && canJump) { 
                 levelStarted = true; 
-                player.dy = -17.5; // Salto potente
+                player.dy = -17; 
                 player.onG = false; 
+                canJump = false;
             }
             return;
         }
 
-        let speed = 8 + (currentLvl * 0.4);
+        let speed = 8.2 + (currentLvl * 0.4);
         distance += speed;
-        player.dy += 1.2; // Gravedad ajustada
+        player.dy += 1.35;
         player.y += player.dy;
 
         const lvlBlocks = levelsData[currentLvl] || levelsData[1];
         const totalDist = (lvlBlocks.length - 1) * step;
+        let progress = Math.min(Math.floor((distance/totalDist)*100), 100);
 
-        if (distance > totalDist + 300) {
+        updateBackground(progress);
+
+        if (distance > totalDist + 350) {
             gameActive = false;
             document.getElementById('victory').style.display = 'flex';
             return;
@@ -111,22 +124,18 @@
         lvlBlocks.forEach((obj, i) => {
             let ox = 150 + (i * step) - distance;
             if (ox < -100 || ox > canvas.width + 100) return;
-            
             let oy = voidLine - 50 - obj[1];
             
-            // Colisión con Bloque
             if (ox > player.x - 50 && ox < player.x + 50) {
                 if (player.y + 40 <= oy + 25 && player.y + 40 + player.dy >= oy && player.x + 30 > ox) {
                     player.y = oy - 40; player.dy = 0; supported = true;
+                    canJump = true;
                 }
                 else if (player.x + 35 > ox + 5 && player.y + 35 > oy && player.y < oy + 40) initLevel();
 
-                // Colisión con Pico (Tipo 2)
                 if (obj[0] === 2) {
-                    let picoY = oy - 40;
-                    if (player.x + 25 > ox + 10 && player.x + 15 < ox + 40 && player.y + 35 > picoY && player.y < oy) {
-                        initLevel();
-                    }
+                    let picoY = oy - 38;
+                    if (player.x + 22 > ox + 10 && player.x + 18 < ox + 40 && player.y + 35 > picoY && player.y < oy) initLevel();
                 }
             }
         });
@@ -134,18 +143,20 @@
         player.onG = supported;
         if (player.onG) {
             player.rot = Math.round(player.rot/1.57)*1.57;
-            if (isPressing) { player.dy = -17.5; player.onG = false; }
+            if (isPressing && canJump) { 
+                player.dy = -17; 
+                player.onG = false; 
+                canJump = false; 
+            }
         } else { player.rot += 0.22; }
 
         document.getElementById('lvlNum').innerText = currentLvl;
-        document.getElementById('percent').innerText = Math.min(Math.floor((distance/totalDist)*100), 100);
+        document.getElementById('percent').innerText = progress;
     }
 
     function draw() {
-        ctx.fillStyle = '#050510';
-        ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.clearRect(0, 0, canvas.width, canvas.height); // Cambiado a clear para ver el color del body
 
-        // Suelo de la Muerte
         ctx.strokeStyle = '#f05'; ctx.setLineDash([10, 10]);
         ctx.beginPath(); ctx.moveTo(0, voidLine); ctx.lineTo(canvas.width, voidLine); ctx.stroke();
         ctx.setLineDash([]);
@@ -161,11 +172,10 @@
 
             if (obj[0] === 2) {
                 ctx.fillStyle = '#f05'; ctx.beginPath();
-                ctx.moveTo(ox + 8, oy); ctx.lineTo(ox + 25, oy - 40); ctx.lineTo(ox + 42, oy); ctx.fill();
+                ctx.moveTo(ox + 10, oy); ctx.lineTo(ox + 25, oy - 38); ctx.lineTo(ox + 40, oy); ctx.fill();
             }
         });
 
-        // Cubo
         ctx.save(); ctx.translate(player.x+20, player.y+20); ctx.rotate(player.rot);
         ctx.fillStyle = '#0fcc'; ctx.fillRect(-20, -20, 40, 40);
         ctx.strokeStyle = 'red'; ctx.lineWidth = 3;
@@ -177,8 +187,13 @@
         requestAnimationFrame(draw);
     }
 
-    window.addEventListener('pointerdown', (e) => { if(gameActive && e.target.tagName !== 'BUTTON') isPressing = true; });
-    window.addEventListener('pointerup', () => isPressing = false);
+    window.addEventListener('pointerdown', (e) => { 
+        if(gameActive && e.target.tagName !== 'BUTTON') isPressing = true; 
+    });
+    window.addEventListener('pointerup', () => {
+        isPressing = false;
+        if (!player.onG) canJump = false;
+    });
     draw();
 </script>
 </body>
