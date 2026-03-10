@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Death Cube - Pro Edition</title>
+    <title>Death Cube - Final Precision</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body { margin: 0; overflow: hidden; background: #000; touch-action: none; font-family: 'Arial Black', sans-serif; }
@@ -40,24 +40,25 @@
     let isPressing = false;
     let gameActive = false;
     let levelStarted = false;
-    const step = 280; 
+    
+    // REDUCIDO EL ESPACIO (Diferencia entre bloques más corta para que alcances a saltar)
+    const step = 220; 
 
     const player = { x: 150, y: voidLine - 90, dy: 0, rot: 0, onG: true };
 
-    // Estructura: [tipo, altura]. Tipo 1 = Bloque, Tipo 2 = Bloque con Pico arriba
-    const safeStart = [[1,0],[1,0],[1,0],[1,0],[1,0]];
+    const safeStart = [[1,0],[1,0],[1,0],[1,0],[1,0],[1,0]];
     
     function createFairLevel(pattern) {
         let level = [...safeStart];
-        for(let i=0; i<8; i++) { level = level.concat(pattern); }
+        for(let i=0; i<10; i++) { level = level.concat(pattern); }
         level.push([1,0],[1,0],[1,0]);
         return level;
     }
 
     const levelsData = {
-        1: createFairLevel([[1,0],[2,0],[1,0],[1,80],[2,80],[1,80]]),
-        2: createFairLevel([[1,0],[1,100],[2,100],[1,100],[1,0],[2,0]]),
-        3: createFairLevel([[2,0],[1,80],[2,80],[1,160],[2,160],[1,0]])
+        1: createFairLevel([[1,0],[2,0],[1,50],[1,50],[2,50],[1,0]]),
+        2: createFairLevel([[1,0],[1,100],[2,100],[1,0],[2,0],[1,0]]),
+        3: createFairLevel([[2,0],[1,80],[2,80],[1,0],[2,0],[1,120]])
     };
 
     function initLevel() {
@@ -82,19 +83,23 @@
     function update() {
         if (!gameActive) return;
         if (!levelStarted) {
-            if (isPressing) { levelStarted = true; player.dy = -17; player.onG = false; }
+            if (isPressing) { 
+                levelStarted = true; 
+                player.dy = -17.5; // Salto potente
+                player.onG = false; 
+            }
             return;
         }
 
-        let speed = 8.5 + (currentLvl * 0.5);
+        let speed = 8 + (currentLvl * 0.4);
         distance += speed;
-        player.dy += 1.25;
+        player.dy += 1.2; // Gravedad ajustada
         player.y += player.dy;
 
         const lvlBlocks = levelsData[currentLvl] || levelsData[1];
-        const totalDist = lvlBlocks.length * step;
+        const totalDist = (lvlBlocks.length - 1) * step;
 
-        if (distance > totalDist + 400) {
+        if (distance > totalDist + 300) {
             gameActive = false;
             document.getElementById('victory').style.display = 'flex';
             return;
@@ -105,20 +110,21 @@
         let supported = false;
         lvlBlocks.forEach((obj, i) => {
             let ox = 150 + (i * step) - distance;
+            if (ox < -100 || ox > canvas.width + 100) return;
+            
             let oy = voidLine - 50 - obj[1];
             
-            if (ox > player.x - 55 && ox < player.x + 55) {
-                // Colisión con el Bloque Base
+            // Colisión con Bloque
+            if (ox > player.x - 50 && ox < player.x + 50) {
                 if (player.y + 40 <= oy + 25 && player.y + 40 + player.dy >= oy && player.x + 30 > ox) {
                     player.y = oy - 40; player.dy = 0; supported = true;
                 }
-                // Muerte por chocar de frente
-                else if (player.x + 35 > ox + 5 && player.y + 35 > oy) initLevel();
+                else if (player.x + 35 > ox + 5 && player.y + 35 > oy && player.y < oy + 40) initLevel();
 
-                // Colisión con el Pico (si es tipo 2)
+                // Colisión con Pico (Tipo 2)
                 if (obj[0] === 2) {
-                    let picoY = oy - 45;
-                    if (player.x + 25 > ox + 5 && player.x + 15 < ox + 45 && player.y + 38 > picoY && player.y < oy) {
+                    let picoY = oy - 40;
+                    if (player.x + 25 > ox + 10 && player.x + 15 < ox + 40 && player.y + 35 > picoY && player.y < oy) {
                         initLevel();
                     }
                 }
@@ -128,7 +134,7 @@
         player.onG = supported;
         if (player.onG) {
             player.rot = Math.round(player.rot/1.57)*1.57;
-            if (isPressing) { player.dy = -17; player.onG = false; }
+            if (isPressing) { player.dy = -17.5; player.onG = false; }
         } else { player.rot += 0.22; }
 
         document.getElementById('lvlNum').innerText = currentLvl;
@@ -139,7 +145,7 @@
         ctx.fillStyle = '#050510';
         ctx.fillRect(0,0,canvas.width,canvas.height);
 
-        // El Vacío
+        // Suelo de la Muerte
         ctx.strokeStyle = '#f05'; ctx.setLineDash([10, 10]);
         ctx.beginPath(); ctx.moveTo(0, voidLine); ctx.lineTo(canvas.width, voidLine); ctx.stroke();
         ctx.setLineDash([]);
@@ -150,18 +156,16 @@
             if (ox < -100 || ox > canvas.width + 100) return;
             let oy = voidLine - 50 - obj[1];
             
-            // Dibujar Bloque
             ctx.fillStyle = '#222'; ctx.strokeStyle = '#0ff'; ctx.lineWidth = 3;
             ctx.fillRect(ox, oy, 50, 50); ctx.strokeRect(ox, oy, 50, 50);
 
-            // Dibujar Pico arriba si es tipo 2
             if (obj[0] === 2) {
                 ctx.fillStyle = '#f05'; ctx.beginPath();
-                ctx.moveTo(ox + 5, oy); ctx.lineTo(ox + 25, oy - 45); ctx.lineTo(ox + 45, oy); ctx.fill();
+                ctx.moveTo(ox + 8, oy); ctx.lineTo(ox + 25, oy - 40); ctx.lineTo(ox + 42, oy); ctx.fill();
             }
         });
 
-        // Cubo Obet
+        // Cubo
         ctx.save(); ctx.translate(player.x+20, player.y+20); ctx.rotate(player.rot);
         ctx.fillStyle = '#0fcc'; ctx.fillRect(-20, -20, 40, 40);
         ctx.strokeStyle = 'red'; ctx.lineWidth = 3;
