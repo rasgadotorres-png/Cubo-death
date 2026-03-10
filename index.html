@@ -4,19 +4,19 @@
     <title>Neon Dash Pro</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        body { margin: 0; overflow: hidden; background: #000; touch-action: none; font-family: 'Arial Black', sans-serif; }
-        #ui { position: fixed; top: 20px; width: 100%; text-align: center; color: #fff; font-size: 24px; pointer-events: none; z-index: 5; }
-        #menu { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; }
-        #start-btn { padding: 20px 50px; font-size: 30px; background: #00ffcc; border: none; border-radius: 10px; cursor: pointer; font-family: 'Arial Black'; box-shadow: 0 0 20px #00ffcc; }
-        h1 { color: #fff; text-shadow: 0 0 20px #0ff; font-size: 40px; margin-bottom: 30px; }
+        body { margin: 0; overflow: hidden; background: #000; touch-action: none; font-family: sans-serif; }
+        #ui { position: fixed; top: 20px; width: 100%; text-align: center; color: #fff; font-size: 24px; pointer-events: none; z-index: 5; display: none; }
+        #menu { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #050510; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; }
+        #start-btn { padding: 25px 60px; font-size: 35px; background: #00ffcc; border: none; border-radius: 15px; font-weight: bold; box-shadow: 0 0 20px #00ffcc; }
+        h1 { color: #fff; font-size: 45px; text-shadow: 0 0 15px #0ff; margin-bottom: 20px; }
     </style>
 </head>
 <body>
-    <div id="ui" style="display:none">PERCENT: <span id="percent">0</span>%</div>
+    <div id="ui">PERCENT: <span id="percent">0</span>%</div>
     
     <div id="menu">
         <h1>NEON DASH</h1>
-        <button id="start-btn">START</button>
+        <button id="start-btn" onclick="startGame()">START</button>
     </div>
 
     <canvas id="gameCanvas"></canvas>
@@ -26,110 +26,107 @@
     const ctx = canvas.getContext('2d');
     const percentEl = document.getElementById('percent');
     const menu = document.getElementById('menu');
-    const startBtn = document.getElementById('start-btn');
     const ui = document.getElementById('ui');
 
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    // --- AUDIO SYSTEM (Web Audio API) ---
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    
+    // --- AUDIO ---
+    let audioCtx;
     function playSound(freq, type, duration, vol) {
+        if(!audioCtx) return;
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         osc.type = type;
         osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
+        osc.connect(gain); gain.connect(audioCtx.destination);
         gain.gain.setValueAtTime(vol, audioCtx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
-        osc.start();
-        osc.stop(audioCtx.currentTime + duration);
+        osc.start(); osc.stop(audioCtx.currentTime + duration);
     }
 
-    function jumpSound() { playSound(400, 'square', 0.2, 0.1); }
-    function deathSound() { playSound(100, 'sawtooth', 0.5, 0.2); }
-
-    // --- CONFIGURACIÓN DEL JUEGO ---
-    const gravity = 1.1;
-    const jumpForce = -16;
-    const speed = 8.5;
+    // --- GAME VARS ---
+    const gravity = 1.1; const jumpForce = -16; const speed = 8.5;
     const groundY = canvas.height / 2 + 100;
-
-    let distance = 0;
-    let gameActive = false;
-    let jumpBuffer = false;
-
-    const player = { x: 150, y: groundY - 40, w: 40, h: 40, dy: 0, rotation: 0, onGround: false };
-
+    let distance = 0; let gameActive = false; let jumpBuffer = false;
+    const player = { x: 150, y: groundY-40, w: 40, h: 40, dy: 0, rotation: 0, onGround: false };
+    
     const levelData = [0,0,0,2,0,1,0,2,0,1,1,2,0,1,0,2,2,0,1,1,1,2,2,1,0,1,2,0,2,2,1,1,1,2,2,2,0,1,1,1,2];
     const obstacles = levelData.map((type, i) => ({ x: 800 + (i * 200), y: groundY, type, w: 50, h: 50 }));
+
+    function startGame() {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        menu.style.display = 'none';
+        ui.style.display = 'block';
+        gameActive = true;
+        animate();
+    }
 
     function update() {
         if (!gameActive) return;
         distance += speed;
-        player.dy += gravity;
-        player.y += player.dy;
-
+        player.dy += gravity; player.y += player.dy;
         let hitGround = false;
-        if (player.y >= groundY - player.h) {
-            player.y = groundY - player.h;
-            player.dy = 0;
-            hitGround = true;
-        }
+        if (player.y >= groundY - player.h) { player.y = groundY - player.h; player.dy = 0; hitGround = true; }
 
         obstacles.forEach(obj => {
             let objX = obj.x - distance;
             if (objX > -100 && objX < canvas.width) {
                 if (player.x + player.w - 8 > objX && player.x + 8 < objX + obj.w) {
-                    if (obj.type === 2) { // PICO
-                        if (player.y + player.h > obj.y - obj.h + 10) gameOver();
-                    } else if (obj.type === 1) { // BLOQUE
+                    if (obj.type === 2) { if (player.y + player.h > obj.y - obj.h + 10) gameOver(); }
+                    else if (obj.type === 1) {
                         if (player.y + player.h > obj.y - obj.h && player.y + player.h < obj.y - obj.h + 30 && player.dy >= 0) {
-                            player.y = obj.y - obj.h - player.h;
-                            player.dy = 0;
-                            hitGround = true;
-                        } else if (player.y + player.h > obj.y - obj.h + 10) {
-                            gameOver();
-                        }
+                            player.y = obj.y - obj.h - player.h; player.dy = 0; hitGround = true;
+                        } else if (player.y + player.h > obj.y - obj.h + 10) { gameOver(); }
                     }
                 }
             }
         });
 
         player.onGround = hitGround;
-        if (player.onGround && jumpBuffer) {
-            player.dy = jumpForce;
-            player.onGround = false;
-            jumpBuffer = false;
-            jumpSound();
-        }
-
+        if (player.onGround && jumpBuffer) { player.dy = jumpForce; player.onGround = false; jumpBuffer = false; playSound(400, 'square', 0.2, 0.1); }
         if (!player.onGround) player.rotation += 0.18;
         else player.rotation = Math.round(player.rotation / (Math.PI/2)) * (Math.PI/2);
-
         percentEl.innerText = Math.min(Math.floor((distance / (obstacles.length * 200)) * 100), 100);
     }
 
-    function draw() {
-        ctx.fillStyle = '#050510';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#0ff';
-        ctx.fillRect(0, groundY, canvas.width, 2);
-
+    function animate() {
+        ctx.fillStyle = '#050510'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#0ff'; ctx.fillRect(0, groundY, canvas.width, 2);
         obstacles.forEach(obj => {
             let objX = obj.x - distance;
             if (obj.type === 1) {
                 ctx.fillStyle = '#1a1a1a'; ctx.strokeStyle = '#0ff'; ctx.lineWidth = 2;
-                ctx.fillRect(objX, obj.y - obj.h, obj.w, obj.h);
-                ctx.strokeRect(objX, obj.y - obj.h, obj.w, obj.h);
+                ctx.fillRect(objX, obj.y - obj.h, obj.w, obj.h); ctx.strokeRect(objX, obj.y - obj.h, obj.w, obj.h);
             } else if (obj.type === 2) {
                 ctx.fillStyle = '#ff0055'; ctx.beginPath();
                 ctx.moveTo(objX, obj.y); ctx.lineTo(objX + obj.w/2, obj.y - obj.h);
                 ctx.lineTo(objX + obj.w, obj.y); ctx.fill();
             }
         });
+        ctx.save(); ctx.translate(player.x + player.w/2, player.y + player.h/2); ctx.rotate(player.rotation);
+        ctx.fillStyle = '#00ffcc'; ctx.shadowBlur = 15; ctx.shadowColor = '#00ffcc';
+        ctx.fillRect(-player.w/2, -player.h/2, player.w, player.h); ctx.restore();
 
-        ctx.save();
-        ctx.translate(player.x + player.w/2, player.y + player.
+        update();
+        if (gameActive) requestAnimationFrame(animate);
+    }
+
+    function gameOver() {
+        gameActive = false;
+        playSound(100, 'sawtooth', 0.5, 0.2);
+        setTimeout(() => location.reload(), 300);
+    }
+
+    window.addEventListener('touchstart', (e) => {
+        if (!gameActive) return;
+        if (player.onGround) { player.dy = jumpForce; player.onGround = false; playSound(400, 'square', 0.2, 0.1); }
+        else { jumpBuffer = true; setTimeout(() => jumpBuffer = false, 150); }
+        e.preventDefault();
+    }, {passive: false});
+
+    // Dibujar pantalla de fondo antes de empezar
+    ctx.fillStyle = '#050510'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+</script>
+</body>
+</html>
