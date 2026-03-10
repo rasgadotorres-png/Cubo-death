@@ -1,15 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Death Cube - Floor is Lava</title>
+    <title>Death Cube - Void Edition</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body { margin: 0; overflow: hidden; background: #000; touch-action: none; font-family: 'Arial Black', sans-serif; }
-        #ui { position: fixed; top: 10px; width: 100%; text-align: center; color: #fff; font-size: 18px; z-index: 10; pointer-events: none; text-shadow: 0 0 5px #000; }
-        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; }
-        h1 { color: #f05; font-size: 55px; text-shadow: 0 0 25px #f05; margin: 0; padding: 0; }
-        .credits { color: #0fcc; font-size: 16px; margin-top: 5px; margin-bottom: 40px; font-family: sans-serif; letter-spacing: 2px; }
-        .btn-real { padding: 20px 60px; font-size: 28px; background-color: #0fcc; color: black; border: 4px solid white; border-radius: 15px; font-weight: bold; cursor: pointer; box-shadow: 0 0 20px #0fcc; -webkit-appearance: none; }
+        #ui { position: fixed; top: 10px; width: 100%; text-align: center; color: #fff; font-size: 18px; z-index: 10; pointer-events: none; }
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; }
+        h1 { color: #f05; font-size: 50px; text-shadow: 0 0 20px #f05; margin: 0; }
+        .credits { color: #0fcc; font-size: 14px; margin-bottom: 30px; letter-spacing: 2px; }
+        .btn-real { padding: 20px 50px; font-size: 25px; background: #0fcc; border: none; border-radius: 15px; font-weight: bold; cursor: pointer; box-shadow: 0 0 20px #0fcc; }
     </style>
 </head>
 <body>
@@ -18,14 +18,13 @@
 
     <div id="menu" class="overlay">
         <h1>DEATH CUBE</h1>
-        <div class="credits">CREADO POR OBET</div>
-        <button class="btn-real" id="startBtn">START GAME</button>
+        <div class="credits">VOID EDITION - BY OBET</div>
+        <button class="btn-real" id="startBtn">SURVIVE THE VOID</button>
     </div>
 
     <div id="victory" class="overlay" style="display:none">
-        <h1 style="color: #0fcc">LEVEL COMPLETE!</h1>
-        <div class="credits">¡NADIE SUPERA LOS RETOS DE OBET!</div>
-        <button class="btn-real" id="nextBtn" style="background-color: #f05; color: white; box-shadow: 0 0 20px #f05;">NEXT LEVEL</button>
+        <h1 style="color: #0fcc">MASTERED</h1>
+        <button class="btn-real" id="nextBtn" style="background:#f05; box-shadow: 0 0 20px #f05; color:white;">NEXT LEVEL</button>
     </div>
 
     <canvas id="gameCanvas"></canvas>
@@ -36,136 +35,134 @@
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    const groundLimit = canvas.height / 2 + 100;
+    const voidLine = canvas.height / 2 + 150; // El límite inferior
     let currentLvl = 1;
     let distance = 0;
     let isPressing = false;
     let gameActive = false;
-    const stepWidth = 280; 
+    const step = 250; 
 
-    const player = { x: 150, y: groundLimit - 250, w: 40, h: 40, dy: 0, rot: 0, onGround: false };
-    const particles = [];
+    const player = { x: 150, y: 0, dy: 0, rot: 0, onG: false };
 
-    // NIVELES: Solo plataformas arriba. Si caes al suelo, mueres.
+    // --- NIVELES DE PARKOUR (SOLO PLATAFORMAS) ---
+    // 1: Bloque, 2: Pico (mortal)
     const allLevels = {
-        1: { color: '#0a0a20', blocks: [[1,100],[1,100],[2,100],[1,100],[1,200],[1,200],[2,200],[1,200],[1,100],[1,100]] },
-        2: { color: '#200a0a', blocks: [[1,100],[2,100],[1,100],[1,200],[2,200],[1,200],[1,300],[2,300],[1,300],[1,100]] },
-        3: { color: '#0a200a', blocks: [[1,100],[2,100],[1,150],[2,150],[1,200],[2,200],[1,250],[2,250],[1,150],[1,50]] },
-        // ... puedes seguir el patrón para el resto
+        1: { color: '#050515', b: [[1,0],[1,0],[1,80],[1,80],[1,0],[1,0],[2,0],[1,50],[1,50],[1,0]] },
+        2: { color: '#150505', b: [[1,0],[1,60],[1,120],[1,120],[2,120],[1,60],[1,0],[2,0],[1,0]] },
+        3: { color: '#051505', b: [[1,0],[2,0],[1,100],[1,180],[1,100],[2,100],[1,0],[1,0],[2,0],[1,50]] },
+        4: { color: '#100015', b: [[1,0],[1,80],[1,0],[1,80],[1,160],[2,160],[1,80],[1,0],[2,0],[1,0]] },
+        5: { color: '#151500', b: [[1,0],[1,50],[1,100],[1,150],[2,150],[1,100],[2,100],[1,50],[2,50],[1,0]] },
+        6: { color: '#001515', b: [[1,0],[2,0],[1,120],[2,120],[1,0],[2,0],[1,120],[2,120],[1,200]] },
+        7: { color: '#150a00', b: [[1,0],[1,100],[1,0],[1,100],[1,200],[2,200],[1,100],[2,100],[1,0]] },
+        8: { color: '#15000a', b: [[1,0],[2,0],[2,0],[1,120],[2,120],[2,120],[1,0],[2,0],[1,0]] },
+        9: { color: '#000000', b: [[1,0],[1,80],[1,160],[1,240],[2,240],[1,160],[1,80],[1,0],[2,0]] },
+        10:{ color: '#0a0a0a', b: [[1,0],[2,0],[1,100],[2,100],[1,200],[2,200],[1,300],[2,300],[1,0]] }
     };
 
-    function launchGame() {
+    function launch() {
         document.getElementById('menu').style.display = 'none';
         document.getElementById('victory').style.display = 'none';
-        document.getElementById('lvlNum').innerText = currentLvl;
-        distance = 0;
-        player.y = groundLimit - 250; 
-        player.dy = 0;
+        distance = 0; 
+        player.y = voidLine - 300; // Empieza cayendo al primer bloque
+        player.dy = 0; 
         player.rot = 0;
         gameActive = true;
     }
 
-    document.getElementById('startBtn').onclick = launchGame;
-    document.getElementById('nextBtn').onclick = () => { currentLvl++; launchGame(); };
+    document.getElementById('startBtn').onclick = launch;
+    document.getElementById('nextBtn').onclick = () => { currentLvl++; launch(); };
 
     function update() {
         if (!gameActive) return;
-        
-        let speed = 9 + (currentLvl * 0.5); 
+        let speed = 8 + (currentLvl * 0.4);
         distance += speed;
-        player.dy += 1.3; // Gravedad
+        player.dy += 1.2;
         player.y += player.dy;
 
-        // Estela
-        if (Math.random() > 0.4) particles.push({x: player.x, y: player.y+20, s: Math.random()*10+5, o: 1});
-        for (let i = particles.length-1; i>=0; i--) {
-            particles[i].o -= 0.05;
-            if (particles[i].o <= 0) particles.splice(i,1);
-        }
+        const lvl = allLevels[currentLvl];
+        const total = lvl.b.length * step;
 
-        const lvl = allLevels[currentLvl] || allLevels[1];
-        const totalDist = lvl.blocks.length * stepWidth;
+        if (distance > total + 600) { gameActive = false; document.getElementById('victory').style.display = 'flex'; return; }
 
-        if (distance > totalDist + 800) {
-            gameActive = false;
-            document.getElementById('victory').style.display = 'flex';
-            return;
-        }
+        // CONDICIÓN DE MUERTE: TOCAR EL VACÍO
+        if (player.y > voidLine) { distance = 0; player.y = voidLine - 300; player.dy = 0; }
 
-        // --- LÓGICA DE MUERTE POR SUELO ---
-        if (player.y > groundLimit - 40) {
-            distance = 0; // Reset por tocar el suelo
-            player.y = groundLimit - 250;
-            player.dy = 0;
-        }
-
-        let standingOn = false;
-
-        lvl.blocks.forEach((obj, i) => {
-            const type = obj[0]; const alt = obj[1];
-            let ox = 800 + (i * stepWidth) - distance;
-            let oy = groundLimit - alt - 50;
-
-            if (ox > player.x - 55 && ox < player.x + 55) {
-                if (type === 1) { // Bloque negro
+        let supported = false;
+        lvl.b.forEach((obj, i) => {
+            let ox = 800 + (i * step) - distance;
+            let oy = voidLine - 50 - obj[1];
+            
+            // Colisión con bloques
+            if (ox > player.x - 50 && ox < player.x + 50) {
+                if (obj[0] === 1) {
+                    // Aterrizar encima
                     if (player.y + 40 <= oy + 25 && player.y + 40 + player.dy >= oy && player.x + 35 > ox && player.x + 5 < ox + 50) {
-                        player.y = oy - 40; player.dy = 0; standingOn = true;
-                    } else if (player.x + 40 > ox + 5 && player.x < ox + 45 && player.y + 40 > oy + 5 && player.y < oy + 45) distance = 0;
-                } else if (type === 2) { // Triángulo rojo
-                    let py = groundLimit - alt;
-                    if (player.x + 30 > ox && player.x + 10 < ox + 50 && player.y + 40 > py - 40 && player.y < py) distance = 0;
+                        player.y = oy - 40; player.dy = 0; supported = true;
+                    } 
+                    // Chocar de frente
+                    else if (player.x + 38 > ox + 5 && player.x < ox + 45 && player.y + 35 > oy) {
+                        distance = 0; player.y = voidLine - 300;
+                    }
+                } 
+                // Colisión con picos
+                else if (obj[0] === 2) {
+                    let py = voidLine - obj[1];
+                    if (player.x + 28 > ox && player.x + 12 < ox + 50 && player.y + 38 > py - 40) {
+                        distance = 0; player.y = voidLine - 300;
+                    }
                 }
             }
         });
 
-        if (standingOn) {
-            player.rot = Math.round(player.rot / 1.57) * 1.57;
-            if (isPressing) { player.dy = -18; standingOn = false; }
-        } else {
-            player.rot += 0.25;
-        }
-        
-        document.getElementById('percent').innerText = Math.min(Math.floor((distance/totalDist)*100), 100);
+        player.onG = supported;
+        if (player.onG) {
+            player.rot = Math.round(player.rot/1.57)*1.57;
+            if (isPressing) { player.dy = -17; player.onG = false; }
+        } else { player.rot += 0.22; }
+
+        document.getElementById('lvlNum').innerText = currentLvl;
+        document.getElementById('percent').innerText = Math.min(Math.floor((distance/total)*100), 100);
     }
 
     function draw() {
-        const lvl = allLevels[currentLvl] || allLevels[1];
-        ctx.fillStyle = lvl.color;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        // El suelo ahora es una línea roja de peligro
-        ctx.fillStyle = '#f05'; ctx.fillRect(0, groundLimit, canvas.width, 5);
+        ctx.fillStyle = allLevels[currentLvl].color;
+        ctx.fillRect(0,0,canvas.width,canvas.height);
 
-        lvl.blocks.forEach((obj, i) => {
-            const type = obj[0]; const alt = obj[1];
-            let ox = 800 + (i * stepWidth) - distance;
-            let oy = groundLimit - alt - 50;
+        // Línea de peligro (El vacío)
+        ctx.strokeStyle = '#f05'; ctx.setLineDash([10, 10]);
+        ctx.beginPath(); ctx.moveTo(0, voidLine); ctx.lineTo(canvas.width, voidLine); ctx.stroke();
+        ctx.setLineDash([]);
+
+        allLevels[currentLvl].b.forEach((obj, i) => {
+            let ox = 800 + (i * step) - distance;
+            let oy = voidLine - 50 - obj[1];
             if (ox < -100 || ox > canvas.width) return;
 
-            if (type === 1) { // Bloque
+            if (obj[0] === 1) { // Bloque
                 ctx.fillStyle = '#222'; ctx.strokeStyle = '#0ff'; ctx.lineWidth = 3;
                 ctx.fillRect(ox, oy, 50, 50); ctx.strokeRect(ox, oy, 50, 50);
-            } else if (type === 2) { // Pico
+            } else { // Pico
                 ctx.fillStyle = '#f05'; ctx.beginPath();
-                ctx.moveTo(ox, groundLimit - alt); ctx.lineTo(ox+25, groundLimit - alt - 50); ctx.lineTo(ox+50, groundLimit - alt); ctx.fill();
+                ctx.moveTo(ox, voidLine - obj[1]); ctx.lineTo(ox+25, voidLine - obj[1]-50); ctx.lineTo(ox+50, voidLine - obj[1]); ctx.fill();
             }
         });
 
-        // Dibujar Cubo Malvado
+        // CUBO MALVADO
         ctx.save(); ctx.translate(player.x+20, player.y+20); ctx.rotate(player.rot);
         ctx.fillStyle = '#0fcc'; ctx.shadowBlur = 15; ctx.shadowColor = '#0fcc';
-        ctx.fillRect(-20, -20, 40, 40); 
-        ctx.shadowBlur = 0; ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.moveTo(-12,-10); ctx.lineTo(-4,-4); ctx.stroke(); // Ojo
-        ctx.beginPath(); ctx.moveTo(12,-10); ctx.lineTo(4,-4); ctx.stroke();  // Ojo
-        ctx.beginPath(); ctx.moveTo(-10,8); ctx.lineTo(0,15); ctx.lineTo(10,8); ctx.stroke(); // Boca
+        ctx.fillRect(-20, -20, 40, 40);
+        ctx.shadowBlur = 0; ctx.strokeStyle = 'red'; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(-12,-8); ctx.lineTo(-4,-2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(12,-8); ctx.lineTo(4,-2); ctx.stroke();
+        ctx.strokeStyle = 'black'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(-10,10); ctx.lineTo(0,4); ctx.lineTo(10,10); ctx.stroke();
         ctx.restore();
 
         update();
         requestAnimationFrame(draw);
     }
 
-    window.addEventListener('touchstart', (e) => { if (gameActive) { isPressing = true; e.preventDefault(); } }, {passive: false});
+    window.addEventListener('touchstart', (e) => { isPressing = true; e.preventDefault(); }, {passive: false});
     window.addEventListener('touchend', () => isPressing = false);
     draw();
 </script>
