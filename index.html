@@ -1,45 +1,33 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Death Cube - Obet Edition</title>
+    <title>Death Cube - Long Run</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        body { margin: 0; overflow: hidden; background: #000; touch-action: none; font-family: sans-serif; }
-        #canvasContainer { position: relative; width: 100vw; height: 100vh; }
-        canvas { display: block; }
-        
-        .overlay { 
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.85); display: flex; flex-direction: column; 
-            justify-content: center; align-items: center; z-index: 100;
-        }
-        
-        h1 { color: #f05; font-size: 40px; text-shadow: 0 0 15px #f05; margin: 0; }
-        .credits { color: #0fcc; font-size: 14px; margin-bottom: 20px; letter-spacing: 2px; }
-        
-        .btn { 
-            padding: 20px 50px; font-size: 20px; background: #0fcc; 
-            border: 3px solid #fff; border-radius: 15px; font-weight: bold;
-            cursor: pointer; color: #000; box-shadow: 0 0 20px #0fcc;
-        }
+        body { margin: 0; overflow: hidden; background: #000; touch-action: none; font-family: 'Arial Black', sans-serif; }
+        #ui { position: fixed; top: 10px; width: 100%; text-align: center; color: #fff; font-size: 16px; z-index: 5; pointer-events: none; }
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
+        h1 { color: #f05; font-size: 45px; text-shadow: 0 0 20px #f05; margin: 0; }
+        .credits { color: #0fcc; font-size: 12px; margin-bottom: 30px; letter-spacing: 2px; }
+        .btn-real { padding: 25px 60px; font-size: 24px; background: #0fcc; border: 4px solid #fff; border-radius: 20px; font-weight: bold; cursor: pointer; color: #000; box-shadow: 0 0 30px #0fcc; }
     </style>
 </head>
 <body>
 
-    <div id="canvasContainer">
-        <div id="menu" class="overlay">
-            <h1>DEATH CUBE</h1>
-            <div class="credits">BY OBET</div>
-            <button class="btn" onclick="startGame()">START GAME</button>
-        </div>
+    <div id="ui">LVL: <span id="lvlNum">1</span> | <span id="percent">0</span>%</div>
 
-        <div id="victory" class="overlay" style="display:none">
-            <h1 style="color: #0fcc">LEVEL UP!</h1>
-            <button class="btn" onclick="nextLevel()">NEXT</button>
-        </div>
-
-        <canvas id="gameCanvas"></canvas>
+    <div id="menu" class="overlay">
+        <h1>DEATH CUBE</h1>
+        <div class="credits">BY OBET</div>
+        <button class="btn-real" id="mainStartBtn">START GAME</button>
     </div>
+
+    <div id="victory" class="overlay" style="display:none">
+        <h1 style="color: #0fcc">LEVEL DONE!</h1>
+        <button class="btn-real" id="nextLvlBtn" style="background:#f05; color:white;">NEXT LEVEL</button>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
 
 <script>
     const canvas = document.getElementById('gameCanvas');
@@ -47,130 +35,152 @@
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    const voidLine = canvas.height / 2 + 100;
-    let gameActive = false;
-    let distance = 0;
+    const voidLine = canvas.height / 2 + 150; 
     let currentLvl = 1;
+    let distance = 0;
     let isPressing = false;
+    let gameActive = false;
+    let startDelay = 0; 
+    const step = 260; 
 
-    // Cubo malvado de Obet
-    const player = { x: 100, y: voidLine - 100, dy: 0, rot: 0 };
+    const player = { x: 150, y: 0, dy: 0, rot: 0, onG: false };
 
-    // Estructura de niveles: 1=Bloque, 2=Pico
-    const levels = {
-        1: [[1,0],[1,0],[1,0],[1,0],[1,0],[1,0],[2,0],[1,0],[2,0],[1,50],[2,50],[1,0]],
-        2: [[1,0],[1,0],[1,0],[1,0],[1,0],[1,60],[2,60],[1,120],[2,120],[1,60],[1,0]],
-        3: [[1,0],[1,0],[1,0],[1,0],[1,0],[2,0],[1,100],[1,180],[1,100],[2,100],[1,0]]
+    // Generador de niveles largos
+    const safeStart = [[1,0],[1,0],[1,0],[1,0],[1,0],[1,0],[1,0],[1,0]];
+    
+    function createLongLevel(pattern) {
+        let level = [...safeStart];
+        // Repetimos el patrón 4 veces para hacerlo muy largo
+        for(let i=0; i<4; i++) {
+            level = level.concat(pattern);
+        }
+        level.push([1,0],[1,0],[1,0]); // Final seguro
+        return level;
+    }
+
+    const levelsData = {
+        1: createLongLevel([[2,0],[1,0],[2,0],[1,50],[2,50],[1,0]]),
+        2: createLongLevel([[1,80],[2,80],[1,0],[2,0],[1,160],[2,160],[1,0]]),
+        3: createLongLevel([[2,0],[2,0],[1,100],[2,100],[1,200],[2,200],[1,0]]),
+        4: createLongLevel([[1,50],[1,100],[1,150],[2,150],[1,0],[2,0]]),
+        5: createLongLevel([[2,0],[1,120],[1,120],[2,0],[1,0],[2,0]])
     };
 
-    function startGame() {
+    function initLevel() {
         document.getElementById('menu').style.display = 'none';
-        resetPlayer();
-        gameActive = true;
-    }
-
-    function resetPlayer() {
+        document.getElementById('victory').style.display = 'none';
         distance = 0;
-        player.y = voidLine - 90; // Aparece justo encima del primer bloque
+        player.y = voidLine - 400;
         player.dy = 0;
         player.rot = 0;
+        startDelay = 60; 
+        gameActive = true;
     }
 
-    function nextLevel() {
+    document.getElementById('mainStartBtn').addEventListener('pointerdown', initLevel);
+    document.getElementById('nextLvlBtn').addEventListener('pointerdown', () => {
         currentLvl++;
-        document.getElementById('victory').style.display = 'none';
-        resetPlayer();
-        gameActive = true;
+        if(currentLvl > 5) currentLvl = 1;
+        initLevel();
+    });
+
+    function reset() {
+        distance = 0;
+        player.y = voidLine - 400;
+        player.dy = 0;
+        startDelay = 30;
     }
 
     function update() {
         if (!gameActive) return;
 
-        player.dy += 1.2; // Gravedad
+        if (startDelay > 0) {
+            startDelay--;
+            player.dy += 1;
+            player.y += player.dy;
+            if(player.y > voidLine - 90) { player.y = voidLine - 90; player.dy = 0; }
+            return; 
+        }
+
+        let speed = 9 + (currentLvl * 0.4);
+        distance += speed;
+        player.dy += 1.35;
         player.y += player.dy;
-        distance += 8 + (currentLvl * 0.5);
 
-        // Si cae al vacío (muerte)
-        if (player.y > voidLine + 50) resetPlayer();
+        const lvlBlocks = levelsData[currentLvl] || levelsData[1];
+        const totalDist = lvlBlocks.length * step;
 
-        const lvlData = levels[currentLvl] || levels[1];
-        let onGround = false;
+        if (distance > totalDist + 400) {
+            gameActive = false;
+            document.getElementById('victory').style.display = 'flex';
+            return;
+        }
 
-        lvlData.forEach((obj, i) => {
-            let bx = 100 + (i * 250) - distance;
-            let by = voidLine - 50 - obj[1];
+        if (player.y > voidLine + 100) reset();
 
-            if (bx > player.x - 50 && bx < player.x + 50) {
-                if (obj[0] === 1) { // Bloque
-                    if (player.y + 40 > by && player.y < by + 50 && player.dy >= 0) {
-                        player.y = by - 40;
-                        player.dy = 0;
-                        onGround = true;
-                    }
-                } else if (obj[0] === 2) { // Pico
-                    if (player.y + 40 > by + 10 && player.x + 35 > bx + 10 && player.x + 5 < bx + 40) {
-                        resetPlayer();
-                    }
+        let supported = false;
+        lvlBlocks.forEach((obj, i) => {
+            let ox = 400 + (i * step) - distance;
+            let oy = voidLine - 50 - obj[1];
+            
+            if (ox > player.x - 60 && ox < player.x + 60) {
+                if (obj[0] === 1) {
+                    if (player.y + 40 <= oy + 30 && player.y + 40 + player.dy >= oy && player.x + 35 > ox) {
+                        player.y = oy - 40; player.dy = 0; supported = true;
+                    } else if (player.x + 38 > ox + 5 && player.y + 35 > oy) reset();
+                } else if (obj[0] === 2) {
+                    if (player.x + 28 > ox && player.x + 12 < ox + 50 && player.y + 38 > voidLine - obj[1] - 40) reset();
                 }
             }
         });
 
-        if (onGround) {
-            player.rot = 0;
-            if (isPressing) player.dy = -17;
-        } else {
-            player.rot += 0.2;
-        }
+        player.onG = supported;
+        if (player.onG) {
+            player.rot = Math.round(player.rot/1.57)*1.57;
+            if (isPressing) { player.dy = -18.5; player.onG = false; }
+        } else { player.rot += 0.25; }
 
-        // Victoria
-        if (distance > lvlData.length * 250 + 400) {
-            gameActive = false;
-            document.getElementById('victory').style.display = 'flex';
-        }
+        document.getElementById('lvlNum').innerText = currentLvl;
+        document.getElementById('percent').innerText = Math.min(Math.floor((distance/totalDist)*100), 100);
     }
 
     function draw() {
-        ctx.fillStyle = '#050510';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#050515';
+        ctx.fillRect(0,0,canvas.width,canvas.height);
 
-        // Línea de muerte
-        ctx.strokeStyle = '#f05';
-        ctx.setLineDash([5, 10]);
-        ctx.strokeRect(0, voidLine, canvas.width, 1);
+        ctx.strokeStyle = '#f05'; ctx.lineWidth = 2; ctx.setLineDash([10, 10]);
+        ctx.beginPath(); ctx.moveTo(0, voidLine); ctx.lineTo(canvas.width, voidLine); ctx.stroke();
         ctx.setLineDash([]);
 
-        const lvlData = levels[currentLvl] || levels[1];
-        lvlData.forEach((obj, i) => {
-            let bx = 100 + (i * 250) - distance;
-            let by = voidLine - 50 - obj[1];
-            
+        const lvlBlocks = levelsData[currentLvl] || levelsData[1];
+        lvlBlocks.forEach((obj, i) => {
+            let ox = 400 + (i * step) - distance;
+            if (ox < -100 || ox > canvas.width + 100) return;
+            let oy = voidLine - 50 - obj[1];
             if (obj[0] === 1) {
-                ctx.fillStyle = '#222'; ctx.strokeStyle = '#0ff';
-                ctx.fillRect(bx, by, 50, 50); ctx.strokeRect(bx, by, 50, 50);
+                ctx.fillStyle = '#222'; ctx.strokeStyle = '#0ff'; ctx.lineWidth = 3;
+                ctx.fillRect(ox, oy, 50, 50); ctx.strokeRect(ox, oy, 50, 50);
             } else {
-                ctx.fillStyle = '#f05';
-                ctx.beginPath();
-                ctx.moveTo(bx, voidLine - obj[1]); ctx.lineTo(bx+25, by); ctx.lineTo(bx+50, voidLine - obj[1]);
-                ctx.fill();
+                ctx.fillStyle = '#f05'; ctx.beginPath();
+                ctx.moveTo(ox, voidLine - obj[1]); ctx.lineTo(ox+25, voidLine - obj[1]-50); ctx.lineTo(ox+50, voidLine - obj[1]); ctx.fill();
             }
         });
 
-        // El cubo malvado
-        ctx.save();
-        ctx.translate(player.x + 20, player.y + 20);
-        ctx.rotate(player.rot);
-        ctx.fillStyle = '#0fcc';
+        ctx.save(); ctx.translate(player.x+20, player.y+20); ctx.rotate(player.rot);
+        ctx.fillStyle = '#0fcc'; ctx.shadowBlur = 15; ctx.shadowColor = '#0fcc';
         ctx.fillRect(-20, -20, 40, 40);
-        // Ojos
-        ctx.fillStyle = 'red'; ctx.fillRect(-12, -10, 8, 4); ctx.fillRect(4, -10, 8, 4);
+        ctx.shadowBlur = 0; ctx.strokeStyle = 'red'; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(-12,-8); ctx.lineTo(-4,-2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(12,-8); ctx.lineTo(4,-2); ctx.stroke();
         ctx.restore();
 
         update();
         requestAnimationFrame(draw);
     }
 
-    window.addEventListener('touchstart', (e) => { isPressing = true; e.preventDefault(); }, {passive: false});
-    window.addEventListener('touchend', () => isPressing = false);
+    window.addEventListener('pointerdown', (e) => { if(gameActive && e.target.tagName !== 'BUTTON') isPressing = true; });
+    window.addEventListener('pointerup', () => isPressing = false);
+
     draw();
 </script>
 </body>
