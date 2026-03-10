@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Death Cube - Fair Play</title>
+    <title>Death Cube - Saw Blade Update</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body { margin: 0; overflow: hidden; background: #050510; touch-action: none; font-family: 'Arial Black', sans-serif; transition: background 1.5s ease; }
         #ui { position: fixed; top: 10px; width: 100%; text-align: center; color: #fff; font-size: 16px; z-index: 5; pointer-events: none; }
-        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
-        h1 { color: #f05; font-size: 45px; text-shadow: 0 0 20px #f05; margin: 0; }
-        .btn-real { padding: 25px 60px; font-size: 24px; background: #0fcc; border: 4px solid #fff; border-radius: 20px; font-weight: bold; cursor: pointer; color: #000; box-shadow: 0 0 30px #0fcc; }
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
+        h1 { color: #f05; font-size: 40px; text-shadow: 0 0 15px #f05; margin: 0; }
+        .btn-real { padding: 20px 50px; font-size: 20px; background: #0fcc; border: 3px solid #fff; border-radius: 15px; font-weight: bold; cursor: pointer; color: #000; margin-top: 20px; }
     </style>
 </head>
 <body>
@@ -17,13 +17,13 @@
 
     <div id="menu" class="overlay">
         <h1>DEATH CUBE</h1>
-        <div style="color:#0fcc; margin-bottom:20px;">BY OBET</div>
+        <div style="color:#0fcc;">SAW UPDATE - BY OBET</div>
         <button class="btn-real" id="mainStartBtn">START GAME</button>
     </div>
 
     <div id="victory" class="overlay" style="display:none">
-        <h1 style="color: #0fcc">COMPLETE!</h1>
-        <button class="btn-real" id="nextLvlBtn" style="background:#f05; color:white;">NEXT LEVEL</button>
+        <h1 style="color: #0fcc">LEVEL CLEAR!</h1>
+        <button class="btn-real" id="nextLvlBtn">NEXT LEVEL</button>
     </div>
 
     <canvas id="gameCanvas"></canvas>
@@ -41,105 +41,85 @@
     let canJump = true;
     let gameActive = false;
     let levelStarted = false;
-    const step = 220; 
+    const step = 240; 
 
     const player = { x: 150, y: voidLine - 90, dy: 0, rot: 0, onG: true };
 
-    const safeStart = [[1,0],[1,0],[1,0],[1,0],[1,0],[1,0]];
+    // Estructura: [tipo, altura]. 
+    // Tipo 1: Bloque normal (Seguro)
+    // Tipo 2: Sierra flotante (Peligro entre bloques)
+    const safeStart = [[1,0],[1,0],[1,0],[1,0]];
     
-    function createFairLevel(pattern) {
+    function createLevel(pattern) {
         let level = [...safeStart];
-        for(let i=0; i<15; i++) { level = level.concat(pattern); }
+        for(let i=0; i<12; i++) { level = level.concat(pattern); }
         level.push([1,0],[1,0],[1,0]);
         return level;
     }
 
     const levelsData = {
-        1: createFairLevel([[1,0],[2,0],[1,0],[1,60],[2,60],[1,0]]),
-        2: createFairLevel([[1,0],[1,100],[2,100],[1,0],[2,0],[1,50]]),
-        3: createFairLevel([[2,0],[1,80],[2,80],[1,0],[2,0],[1,140]])
+        1: createLevel([[1,0],[2,40],[1,0],[1,50],[2,90],[1,50]]),
+        2: createLevel([[1,0],[2,20],[1,80],[2,100],[1,40],[2,10]]),
+        3: createLevel([[1,0],[2,60],[1,120],[2,150],[1,80],[2,30]])
     };
-
-    function updateBackground(p) {
-        if (p < 25) document.body.style.background = "#050510";
-        else if (p < 50) document.body.style.background = "#150520";
-        else if (p < 75) document.body.style.background = "#051520";
-        else if (p < 100) document.body.style.background = "#200510";
-    }
 
     function initLevel() {
         document.getElementById('menu').style.display = 'none';
         document.getElementById('victory').style.display = 'none';
-        document.body.style.background = "#050510";
         distance = 0;
         levelStarted = false;
         player.y = voidLine - 90;
         player.dy = 0;
-        player.rot = 0;
         player.onG = true;
-        canJump = true;
         gameActive = true;
     }
 
-    document.getElementById('mainStartBtn').addEventListener('pointerdown', initLevel);
-    document.getElementById('nextLvlBtn').addEventListener('pointerdown', () => {
-        currentLvl++;
-        if(currentLvl > 3) currentLvl = 1;
-        initLevel();
-    });
+    document.getElementById('mainStartBtn').onclick = initLevel;
+    document.getElementById('nextLvlBtn').onclick = () => { currentLvl++; initLevel(); };
 
     function update() {
         if (!gameActive) return;
         if (!levelStarted) {
-            if (isPressing && canJump) { 
-                levelStarted = true; 
-                player.dy = -17; 
-                player.onG = false; 
-                canJump = false;
-            }
+            if (isPressing) { levelStarted = true; player.dy = -16; player.onG = false; }
             return;
         }
 
-        let speed = 8.2 + (currentLvl * 0.4);
-        distance += speed;
-        player.dy += 1.35;
+        distance += 8 + (currentLvl * 0.5);
+        player.dy += 1.2;
         player.y += player.dy;
 
         const lvlBlocks = levelsData[currentLvl] || levelsData[1];
         const totalDist = (lvlBlocks.length - 1) * step;
         let progress = Math.min(Math.floor((distance/totalDist)*100), 100);
 
-        updateBackground(progress);
-
-        if (distance > totalDist + 350) {
+        if (distance > totalDist + 400) {
             gameActive = false;
             document.getElementById('victory').style.display = 'flex';
             return;
         }
 
-        if (player.y > voidLine + 50) initLevel();
+        if (player.y > voidLine + 100) initLevel();
 
         let supported = false;
         lvlBlocks.forEach((obj, i) => {
             let ox = 150 + (i * step) - distance;
-            if (ox < -100 || ox > canvas.width + 100) return;
             let oy = voidLine - 50 - obj[1];
             
-            // COLISIÓN CON EL BLOQUE (HITBOX AMPLIA)
             if (ox > player.x - 50 && ox < player.x + 50) {
-                if (player.y + 40 <= oy + 30 && player.y + 40 + player.dy >= oy && player.x + 35 > ox) {
-                    player.y = oy - 40; player.dy = 0; supported = true;
-                    canJump = true;
-                }
-                else if (player.x + 38 > ox + 5 && player.y + 35 > oy && player.y < oy + 40) initLevel();
-
-                // COLISIÓN CON EL PICO (HITBOX REDUCIDA PARA QUE SEA JUSTO)
-                if (obj[0] === 2) {
-                    let picoY = oy - 35; // Pico más bajo internamente
-                    // Solo muere si el centro del cubo toca el centro del pico
-                    if (player.x + 25 > ox + 18 && player.x + 15 < ox + 32 && player.y + 38 > picoY && player.y < oy) {
+                // Si es un BLOQUE (Tipo 1)
+                if (obj[0] === 1) {
+                    if (player.y + 40 <= oy + 30 && player.y + 40 + player.dy >= oy && player.x + 35 > ox) {
+                        player.y = oy - 40; player.dy = 0; supported = true; canJump = true;
+                    } else if (player.x + 35 > ox + 5 && player.y + 35 > oy && player.y < oy + 45) {
                         initLevel();
                     }
+                }
+                // Si es una SIERRA (Tipo 2)
+                else if (obj[0] === 2) {
+                    let sX = ox + 25;
+                    let sY = oy + 25;
+                    let dist = Math.sqrt((player.x+20 - sX)**2 + (player.y+20 - sY)**2);
+                    if (dist < 35) initLevel(); // Colisión circular
                 }
             }
         });
@@ -147,12 +127,8 @@
         player.onG = supported;
         if (player.onG) {
             player.rot = Math.round(player.rot/1.57)*1.57;
-            if (isPressing && canJump) { 
-                player.dy = -17.5; // Salto un poquito más alto
-                player.onG = false; 
-                canJump = false; 
-            }
-        } else { player.rot += 0.22; }
+            if (isPressing && canJump) { player.dy = -16; player.onG = false; canJump = false; }
+        } else { player.rot += 0.2; }
 
         document.getElementById('lvlNum').innerText = currentLvl;
         document.getElementById('percent').innerText = progress;
@@ -160,7 +136,8 @@
 
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+        
+        // Línea de muerte
         ctx.strokeStyle = '#f05'; ctx.setLineDash([10, 10]);
         ctx.beginPath(); ctx.moveTo(0, voidLine); ctx.lineTo(canvas.width, voidLine); ctx.stroke();
         ctx.setLineDash([]);
@@ -171,15 +148,25 @@
             if (ox < -100 || ox > canvas.width + 100) return;
             let oy = voidLine - 50 - obj[1];
             
-            ctx.fillStyle = '#222'; ctx.strokeStyle = '#0ff'; ctx.lineWidth = 3;
-            ctx.fillRect(ox, oy, 50, 50); ctx.strokeRect(ox, oy, 50, 50);
-
-            if (obj[0] === 2) {
-                ctx.fillStyle = '#f05'; ctx.beginPath();
-                ctx.moveTo(ox + 12, oy); ctx.lineTo(ox + 25, oy - 35); ctx.lineTo(ox + 38, oy); ctx.fill();
+            if (obj[0] === 1) {
+                ctx.fillStyle = '#222'; ctx.strokeStyle = '#0ff'; ctx.lineWidth = 3;
+                ctx.fillRect(ox, oy, 50, 50); ctx.strokeRect(ox, oy, 50, 50);
+            } else {
+                // Dibujar Sierra
+                ctx.save();
+                ctx.translate(ox + 25, oy + 25);
+                ctx.rotate(Date.now() * 0.01);
+                ctx.fillStyle = '#ff3300';
+                for(let j=0; j<8; j++) {
+                    ctx.rotate(Math.PI/4);
+                    ctx.beginPath(); ctx.moveTo(0, -25); ctx.lineTo(10, 0); ctx.lineTo(-10, 0); ctx.fill();
+                }
+                ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI*2); ctx.fill();
+                ctx.restore();
             }
         });
 
+        // Jugador
         ctx.save(); ctx.translate(player.x+20, player.y+20); ctx.rotate(player.rot);
         ctx.fillStyle = '#0fcc'; ctx.fillRect(-20, -20, 40, 40);
         ctx.strokeStyle = 'red'; ctx.lineWidth = 3;
@@ -191,13 +178,8 @@
         requestAnimationFrame(draw);
     }
 
-    window.addEventListener('pointerdown', (e) => { 
-        if(gameActive && e.target.tagName !== 'BUTTON') isPressing = true; 
-    });
-    window.addEventListener('pointerup', () => {
-        isPressing = false;
-        if (!player.onG) canJump = false;
-    });
+    window.onpointerdown = () => isPressing = true;
+    window.onpointerup = () => isPressing = false;
     draw();
 </script>
 </body>
