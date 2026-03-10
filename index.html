@@ -1,23 +1,23 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Death Cube - Final Fixed</title>
+    <title>Death Cube - Anti-Stuck Edition</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        body { margin: 0; overflow: hidden; background: #0a0a1a; touch-action: none; font-family: sans-serif; }
-        #stats { position: fixed; top: 10px; width: 100%; text-align: center; color: #0ff; font-weight: bold; z-index: 10; pointer-events: none; }
+        body { margin: 0; overflow: hidden; background: #050510; touch-action: none; font-family: sans-serif; }
+        #ui { position: fixed; top: 10px; width: 100%; text-align: center; color: #0ff; font-weight: bold; z-index: 10; pointer-events: none; }
         .menu { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 20; }
-        button { padding: 15px 40px; font-size: 20px; background: #0fcc; border: none; border-radius: 10px; cursor: pointer; box-shadow: 0 0 15px #0fcc; }
+        button { padding: 20px 50px; font-size: 22px; background: #0fcc; border: none; border-radius: 15px; cursor: pointer; color: #000; font-weight: bold; box-shadow: 0 0 20px #0fcc; }
     </style>
 </head>
 <body>
 
-    <div id="stats">NIVEL 1 | <span id="prog">0</span>%</div>
+    <div id="ui">NIVEL 1 | <span id="prog">0</span>%</div>
 
     <div id="startMenu" class="menu">
-        <h1 style="color:#f05; font-size: 40px;">DEATH CUBE</h1>
-        <p style="color:#fff;">ERRORES CORREGIDOS ✓</p>
-        <button onclick="startGame()">EMPEZAR</button>
+        <h1 style="color:#f05; font-size: 45px; margin:0;">DEATH CUBE</h1>
+        <p style="color:#fff; margin-bottom:30px;">FIX: ANTI-TRABA / SIN VUELTAS INFINITAS</p>
+        <button onclick="startGame()">JUGAR AHORA</button>
     </div>
 
     <canvas id="g"></canvas>
@@ -33,102 +33,98 @@
     let active = false;
     let pressing = false;
     
-    const player = { x: 100, y: floorY - 40, dy: 0, rot: 0, size: 40 };
+    const player = { x: 100, y: floorY - 50, dy: 0, rot: 0, size: 42 };
 
-    // Nivel 1: [tipo, altura_bloque] -> 1: Bloque, 2: Sierra
     const level1 = [
-        [1,0],[1,0],[1,0], // Inicio seguro
-        [1,30],[2,50],[1,60],[1,60],[2,40],[1,0],
-        [1,40],[2,100],[1,120],[1,120],[2,20],[1,0],
-        [1,0],[2,50],[1,50],[1,50],[2,0],[1,0]
+        [1,0],[1,0],[1,0], 
+        [1,30],[2,70],[1,50],[1,50],[2,80],[1,0],
+        [1,40],[2,120],[1,120],[1,120],[2,40],[1,0]
     ];
 
     function startGame() {
         document.getElementById('startMenu').style.display = 'none';
         dist = 0;
-        player.y = floorY - 40;
+        player.y = floorY - 50;
         player.dy = 0;
+        player.rot = 0;
         active = true;
     }
 
     function update() {
         if (!active) return;
 
-        dist += 8; // Velocidad de avance
-        player.dy += 1.1; // Gravedad
+        dist += 8.5; 
+        player.dy += 1.15; 
         player.y += player.dy;
 
-        // Si cae al vacío
         if (player.y > canvas.height) startGame();
 
         let onGround = false;
-        const step = 250; // Espacio entre bloques calibrado
+        const step = 260; 
 
         level1.forEach((obj, i) => {
             let bx = 100 + (i * step) - dist;
-            let by = floorY - 40 - obj[1];
+            let by = floorY - 50 - obj[1];
 
-            // Colisión lógica
-            if (bx > player.x - 60 && bx < player.x + 60) {
-                if (obj[0] === 1) { // Bloque
-                    // Aterrizar arriba (con margen de error para que no "traspase")
-                    if (player.y + player.size > by && player.y + player.size < by + 30 && player.dy >= 0) {
+            // Colisión mejorada para evitar quedarse trabado
+            if (bx > player.x - 75 && bx < player.x + 65) {
+                if (obj[0] === 1) { 
+                    // Si el cubo está cayendo y toca la parte superior (con margen de imán)
+                    if (player.y + player.size > by - 5 && player.y + player.size < by + 35 && player.dy >= 0) {
                         player.y = by - player.size;
                         player.dy = 0;
+                        player.rot = 0; // Detener rotación inmediatamente
                         onGround = true;
                     } 
-                    // Chocar de frente (solo si estás muy abajo)
-                    else if (player.x + player.size > bx + 10 && player.y + player.size > by + 10 && player.y < by + 40) {
+                    // Colisión lateral (muerte justa)
+                    else if (player.x + player.size > bx + 15 && player.y + player.size > by + 10 && player.y < by + 45) {
                         startGame();
                     }
                 } else { // Sierra
-                    let dx = (player.x + 20) - (bx + 30);
-                    let dy = (player.y + 20) - (by + 30);
-                    if (Math.sqrt(dx*dx + dy*dy) < 25) startGame();
+                    let dx = (player.x + 21) - (bx + 35);
+                    let dy = (player.y + 21) - (by + 25);
+                    if (Math.sqrt(dx*dx + dy*dy) < 26) startGame();
                 }
             }
         });
 
         if (onGround) {
-            player.rot = 0;
-            if (pressing) player.dy = -20; // Salto potente
+            if (pressing) player.dy = -21; 
         } else {
-            player.rot += 0.2;
+            player.rot += 0.22;
         }
 
-        document.getElementById('prog').innerText = Math.min(Math.floor((dist/5000)*100), 100);
+        document.getElementById('prog').innerText = Math.min(Math.floor((dist/4000)*100), 100);
     }
 
     function draw() {
-        ctx.fillStyle = '#0a0a1a';
+        ctx.fillStyle = '#050510';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Suelo falso
-        ctx.strokeStyle = '#333';
+        ctx.strokeStyle = '#f05'; ctx.setLineDash([5, 10]);
         ctx.beginPath(); ctx.moveTo(0, floorY); ctx.lineTo(canvas.width, floorY); ctx.stroke();
+        ctx.setLineDash([]);
 
-        const step = 250;
+        const step = 260;
         level1.forEach((obj, i) => {
             let bx = 100 + (i * step) - dist;
             if (bx < -100 || bx > canvas.width) return;
-            let by = floorY - 40 - obj[1];
+            let by = floorY - 50 - obj[1];
 
             if (obj[0] === 1) {
-                ctx.fillStyle = '#111'; ctx.strokeStyle = '#0ff';
-                ctx.fillRect(bx, by, 70, 40); ctx.strokeRect(bx, by, 70, 40);
+                ctx.fillStyle = '#111'; ctx.strokeStyle = '#0ff'; ctx.lineWidth = 3;
+                ctx.fillRect(bx, by, 80, 50); ctx.strokeRect(bx, by, 80, 50);
             } else {
-                ctx.fillStyle = '#f05';
-                ctx.beginPath(); ctx.arc(bx+35, by+20, 15, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#f30';
+                ctx.beginPath(); ctx.arc(bx+40, by+25, 18, 0, Math.PI*2); ctx.fill();
             }
         });
 
-        // Jugador
         ctx.save();
-        ctx.translate(player.x + 20, player.y + 20);
+        ctx.translate(player.x + 21, player.y + 21);
         ctx.rotate(player.rot);
         ctx.fillStyle = '#0fcc';
-        ctx.fillRect(-20, -20, 40, 40);
-        ctx.strokeRect(-20, -20, 40, 40);
+        ctx.fillRect(-21, -21, 42, 42);
         ctx.restore();
 
         update();
