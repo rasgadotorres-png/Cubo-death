@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Death Cube - Color Shift</title>
+    <title>Death Cube - Fair Play</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body { margin: 0; overflow: hidden; background: #050510; touch-action: none; font-family: 'Arial Black', sans-serif; transition: background 1.5s ease; }
@@ -49,7 +49,7 @@
     
     function createFairLevel(pattern) {
         let level = [...safeStart];
-        for(let i=0; i<15; i++) { level = level.concat(pattern); } // Niveles aún más largos
+        for(let i=0; i<15; i++) { level = level.concat(pattern); }
         level.push([1,0],[1,0],[1,0]);
         return level;
     }
@@ -61,7 +61,6 @@
     };
 
     function updateBackground(p) {
-        // Cambia el color del body según el porcentaje
         if (p < 25) document.body.style.background = "#050510";
         else if (p < 50) document.body.style.background = "#150520";
         else if (p < 75) document.body.style.background = "#051520";
@@ -126,16 +125,21 @@
             if (ox < -100 || ox > canvas.width + 100) return;
             let oy = voidLine - 50 - obj[1];
             
+            // COLISIÓN CON EL BLOQUE (HITBOX AMPLIA)
             if (ox > player.x - 50 && ox < player.x + 50) {
-                if (player.y + 40 <= oy + 25 && player.y + 40 + player.dy >= oy && player.x + 30 > ox) {
+                if (player.y + 40 <= oy + 30 && player.y + 40 + player.dy >= oy && player.x + 35 > ox) {
                     player.y = oy - 40; player.dy = 0; supported = true;
                     canJump = true;
                 }
-                else if (player.x + 35 > ox + 5 && player.y + 35 > oy && player.y < oy + 40) initLevel();
+                else if (player.x + 38 > ox + 5 && player.y + 35 > oy && player.y < oy + 40) initLevel();
 
+                // COLISIÓN CON EL PICO (HITBOX REDUCIDA PARA QUE SEA JUSTO)
                 if (obj[0] === 2) {
-                    let picoY = oy - 38;
-                    if (player.x + 22 > ox + 10 && player.x + 18 < ox + 40 && player.y + 35 > picoY && player.y < oy) initLevel();
+                    let picoY = oy - 35; // Pico más bajo internamente
+                    // Solo muere si el centro del cubo toca el centro del pico
+                    if (player.x + 25 > ox + 18 && player.x + 15 < ox + 32 && player.y + 38 > picoY && player.y < oy) {
+                        initLevel();
+                    }
                 }
             }
         });
@@ -144,7 +148,7 @@
         if (player.onG) {
             player.rot = Math.round(player.rot/1.57)*1.57;
             if (isPressing && canJump) { 
-                player.dy = -17; 
+                player.dy = -17.5; // Salto un poquito más alto
                 player.onG = false; 
                 canJump = false; 
             }
@@ -155,7 +159,7 @@
     }
 
     function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height); // Cambiado a clear para ver el color del body
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         ctx.strokeStyle = '#f05'; ctx.setLineDash([10, 10]);
         ctx.beginPath(); ctx.moveTo(0, voidLine); ctx.lineTo(canvas.width, voidLine); ctx.stroke();
@@ -172,7 +176,7 @@
 
             if (obj[0] === 2) {
                 ctx.fillStyle = '#f05'; ctx.beginPath();
-                ctx.moveTo(ox + 10, oy); ctx.lineTo(ox + 25, oy - 38); ctx.lineTo(ox + 40, oy); ctx.fill();
+                ctx.moveTo(ox + 12, oy); ctx.lineTo(ox + 25, oy - 35); ctx.lineTo(ox + 38, oy); ctx.fill();
             }
         });
 
