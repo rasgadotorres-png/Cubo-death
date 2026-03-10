@@ -1,102 +1,98 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Neon Dash Fixed</title>
+    <title>Neon Dash Ultra Fix</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        body { margin: 0; overflow: hidden; background: #050510; touch-action: none; font-family: sans-serif; }
-        #percent { position: fixed; top: 10px; width: 100%; text-align: center; color: #0ff; font-size: 24px; font-weight: bold; z-index: 10; }
-        #victory { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,255,200,0.2); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 200; backdrop-filter: blur(5px); }
-        h2 { color: #fff; font-size: 40px; text-shadow: 0 0 20px #0ff; }
+        body { margin: 0; overflow: hidden; background: #ff0000; touch-action: none; font-family: sans-serif; }
+        #percent { position: fixed; top: 10px; width: 100%; text-align: center; color: #0ff; font-size: 24px; font-weight: bold; z-index: 100; }
+        #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        #btn { padding: 20px 50px; font-size: 25px; background: #0fcc; border: none; border-radius: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
     <div id="percent">0%</div>
-    <div id="victory"><h2>LEVEL COMPLETE!</h2><p style="color:white">Toca para reiniciar</p></div>
-    <canvas id="gameCanvas"></canvas>
+    <div id="overlay"><button id="btn">TAP TO START</button></div>
+    <canvas id="g"></canvas>
 
 <script>
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    
-    // Forzar tamaño correcto
-    function resize() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+    const cvs = document.getElementById('g');
+    const ctx = cvs.getContext('2d');
+    const overlay = document.getElementById('overlay');
+    const btn = document.getElementById('btn');
+
+    let active = false;
+    let dist = 0;
+    let isPress = false;
+
+    function init() {
+        cvs.width = window.innerWidth;
+        cvs.height = window.innerHeight;
+        overlay.style.display = 'none';
+        active = true;
+        loop();
     }
-    window.addEventListener('resize', resize);
-    resize();
 
-    const groundY = canvas.height / 2 + 100;
-    const speed = 8.5;
-    let distance = 0;
-    let isPressing = false;
-    let gameWon = false;
+    btn.addEventListener('touchstart', (e) => { e.preventDefault(); init(); }, {once: true});
+    btn.addEventListener('click', init, {once: true});
 
-    // Fondo (estrellas)
-    const stars = Array.from({length: 50}, () => ({
-        x: Math.random() * canvas.width,
-        y: Math.random() * groundY,
-        s: Math.random() * 2 + 1
-    }));
+    const ground = window.innerHeight / 2 + 100;
+    const player = { y: ground - 40, dy: 0, rot: 0 };
+    const level = [0,0,2,0,1,0,2,2,0,1,1,2,0,2,2];
 
-    const player = { x: 100, y: groundY - 40, w: 40, h: 40, dy: 0, rot: 0, onGround: false };
-    const level = [0,0,2,0,1,0,2,2,0,1,1,0,2,0,1,2,2,0,1,1,1,0,2,2,2];
-    const totalDist = level.length * 300;
+    function loop() {
+        if(!active) return;
 
-    function draw() {
-        // Limpiar pantalla
+        // Fondo
         ctx.fillStyle = '#050510';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // Dibujar estrellas (movimiento lento)
-        ctx.fillStyle = '#0fcc';
-        stars.forEach(s => {
-            s.x -= s.s * 0.5;
-            if (s.x < 0) s.x = canvas.width;
-            ctx.fillRect(s.x, s.y, 2, 2);
-        });
+        ctx.fillRect(0, 0, cvs.width, cvs.height);
 
         // Suelo
         ctx.fillStyle = '#0ff';
-        ctx.fillRect(0, groundY, canvas.width, 2);
+        ctx.fillRect(0, ground, cvs.width, 2);
+
+        // Movimiento
+        dist += 8;
+        player.dy += 1.1;
+        player.y += player.dy;
+
+        if(player.y > ground - 40) {
+            player.y = ground - 40;
+            player.dy = 0;
+            if(isPress) player.dy = -16;
+            player.rot = Math.round(player.rot / 1.57) * 1.57;
+        } else {
+            player.rot += 0.2;
+        }
 
         // Obstáculos
-        level.forEach((type, i) => {
-            let ox = 600 + (i * 300) - distance;
-            if (ox < -100 || ox > canvas.width) return;
-
-            if (type === 1) { // Bloque
-                ctx.fillStyle = '#111'; ctx.strokeStyle = '#0ff'; ctx.lineWidth = 3;
-                ctx.fillRect(ox, groundY-50, 50, 50); ctx.strokeRect(ox, groundY-50, 50, 50);
-                // Colisión bloque
-                if (player.x+40 > ox && player.x < ox+50 && player.y+40 > groundY-50) {
-                    if (player.y+40 < groundY-20 && player.dy >= 0) {
-                        player.y = groundY-90; player.dy = 0; player.onGround = true;
-                    } else distance = 0;
-                }
-            } else if (type === 2) { // Pico
+        level.forEach((t, i) => {
+            let x = 600 + (i * 300) - dist;
+            if(t === 1) {
+                ctx.fillStyle = '#111'; ctx.strokeStyle = '#0ff';
+                ctx.fillRect(x, ground-50, 50, 50); ctx.strokeRect(x, ground-50, 50, 50);
+                if(150+40 > x && 150 < x+50 && player.y+40 > ground-50) dist = 0;
+            } else if(t === 2) {
                 ctx.fillStyle = '#f05'; ctx.beginPath();
-                ctx.moveTo(ox, groundY); ctx.lineTo(ox+25, groundY-50); ctx.lineTo(ox+50, groundY); ctx.fill();
-                // Colisión pico
-                if (player.x+30 > ox && player.x+10 < ox+50 && player.y+40 > groundY-35) distance = 0;
+                ctx.moveTo(x, ground); ctx.lineTo(x+25, ground-50); ctx.lineTo(x+50, ground); ctx.fill();
+                if(150+30 > x && 150+10 < x+50 && player.y+40 > ground-35) dist = 0;
             }
         });
 
-        // Jugador
+        // Cubo
         ctx.save();
-        ctx.translate(player.x+20, player.y+20);
+        ctx.translate(150+20, player.y+20);
         ctx.rotate(player.rot);
-        ctx.fillStyle = '#0fcc'; ctx.shadowBlur = 15; ctx.shadowColor = '#0fcc';
+        ctx.fillStyle = '#0fcc';
         ctx.fillRect(-20, -20, 40, 40);
         ctx.restore();
 
-        // Física
-        if (!gameWon) {
-            distance += speed;
-            player.dy += 1.1;
-            player.y += player.dy;
+        document.getElementById('percent').innerText = Math.floor(dist/50) + "%";
+        requestAnimationFrame(loop);
+    }
 
-            if (player.y > groundY - 40) {
-                player.y = groundY - 40; player.dy = 0; player.onGround = true;
-                player.rot = Math.round(player.rot / (Math.PI
+    window.addEventListener('touchstart', () => isPress = true);
+    window.addEventListener('touchend', () => isPress = false);
+</script>
+</body>
+</html>
