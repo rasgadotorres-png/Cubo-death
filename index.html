@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Death Cube - Long Run</title>
+    <title>Death Cube - Solid Start</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body { margin: 0; overflow: hidden; background: #000; touch-action: none; font-family: 'Arial Black', sans-serif; }
@@ -23,7 +23,7 @@
     </div>
 
     <div id="victory" class="overlay" style="display:none">
-        <h1 style="color: #0fcc">LEVEL DONE!</h1>
+        <h1 style="color: #0fcc">LEVEL COMPLETE</h1>
         <button class="btn-real" id="nextLvlBtn" style="background:#f05; color:white;">NEXT LEVEL</button>
     </div>
 
@@ -40,66 +40,56 @@
     let distance = 0;
     let isPressing = false;
     let gameActive = false;
-    let startDelay = 0; 
+    let levelStarted = false; // Nueva variable: el nivel no se mueve hasta que saltas
     const step = 260; 
 
-    const player = { x: 150, y: 0, dy: 0, rot: 0, onG: false };
+    const player = { x: 150, y: voidLine - 90, dy: 0, rot: 0, onG: true };
 
-    // Generador de niveles largos
     const safeStart = [[1,0],[1,0],[1,0],[1,0],[1,0],[1,0],[1,0],[1,0]];
     
     function createLongLevel(pattern) {
         let level = [...safeStart];
-        // Repetimos el patrón 4 veces para hacerlo muy largo
-        for(let i=0; i<4; i++) {
-            level = level.concat(pattern);
-        }
-        level.push([1,0],[1,0],[1,0]); // Final seguro
+        for(let i=0; i<6; i++) { level = level.concat(pattern); }
+        level.push([1,0],[1,0],[1,0]);
         return level;
     }
 
     const levelsData = {
         1: createLongLevel([[2,0],[1,0],[2,0],[1,50],[2,50],[1,0]]),
-        2: createLongLevel([[1,80],[2,80],[1,0],[2,0],[1,160],[2,160],[1,0]]),
-        3: createLongLevel([[2,0],[2,0],[1,100],[2,100],[1,200],[2,200],[1,0]]),
-        4: createLongLevel([[1,50],[1,100],[1,150],[2,150],[1,0],[2,0]]),
-        5: createLongLevel([[2,0],[1,120],[1,120],[2,0],[1,0],[2,0]])
+        2: createLongLevel([[1,80],[2,80],[1,0],[2,0],[1,160],[2,160]]),
+        3: createLongLevel([[2,0],[2,0],[1,100],[2,100],[1,200],[2,200]])
     };
 
     function initLevel() {
         document.getElementById('menu').style.display = 'none';
         document.getElementById('victory').style.display = 'none';
         distance = 0;
-        player.y = voidLine - 400;
+        levelStarted = false; // Esperar al primer toque
+        player.y = voidLine - 90; // Empezar justo encima de la plataforma
         player.dy = 0;
         player.rot = 0;
-        startDelay = 60; 
+        player.onG = true;
         gameActive = true;
     }
 
     document.getElementById('mainStartBtn').addEventListener('pointerdown', initLevel);
     document.getElementById('nextLvlBtn').addEventListener('pointerdown', () => {
         currentLvl++;
-        if(currentLvl > 5) currentLvl = 1;
+        if(currentLvl > 3) currentLvl = 1;
         initLevel();
     });
-
-    function reset() {
-        distance = 0;
-        player.y = voidLine - 400;
-        player.dy = 0;
-        startDelay = 30;
-    }
 
     function update() {
         if (!gameActive) return;
 
-        if (startDelay > 0) {
-            startDelay--;
-            player.dy += 1;
-            player.y += player.dy;
-            if(player.y > voidLine - 90) { player.y = voidLine - 90; player.dy = 0; }
-            return; 
+        // Si el jugador no ha saltado la primera vez, el nivel se queda quieto
+        if (!levelStarted) {
+            if (isPressing) {
+                levelStarted = true;
+                player.dy = -18.5;
+                player.onG = false;
+            }
+            return;
         }
 
         let speed = 9 + (currentLvl * 0.4);
@@ -116,20 +106,20 @@
             return;
         }
 
-        if (player.y > voidLine + 100) reset();
+        if (player.y > voidLine + 100) initLevel();
 
         let supported = false;
         lvlBlocks.forEach((obj, i) => {
-            let ox = 400 + (i * step) - distance;
+            let ox = 150 + (i * step) - distance;
             let oy = voidLine - 50 - obj[1];
             
             if (ox > player.x - 60 && ox < player.x + 60) {
                 if (obj[0] === 1) {
                     if (player.y + 40 <= oy + 30 && player.y + 40 + player.dy >= oy && player.x + 35 > ox) {
                         player.y = oy - 40; player.dy = 0; supported = true;
-                    } else if (player.x + 38 > ox + 5 && player.y + 35 > oy) reset();
+                    } else if (player.x + 38 > ox + 5 && player.y + 35 > oy) initLevel();
                 } else if (obj[0] === 2) {
-                    if (player.x + 28 > ox && player.x + 12 < ox + 50 && player.y + 38 > voidLine - obj[1] - 40) reset();
+                    if (player.x + 28 > ox && player.x + 12 < ox + 50 && player.y + 38 > voidLine - obj[1] - 40) initLevel();
                 }
             }
         });
@@ -154,7 +144,7 @@
 
         const lvlBlocks = levelsData[currentLvl] || levelsData[1];
         lvlBlocks.forEach((obj, i) => {
-            let ox = 400 + (i * step) - distance;
+            let ox = 150 + (i * step) - distance;
             if (ox < -100 || ox > canvas.width + 100) return;
             let oy = voidLine - 50 - obj[1];
             if (obj[0] === 1) {
