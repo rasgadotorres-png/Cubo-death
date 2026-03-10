@@ -1,182 +1,142 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Death Cube - Final Obet Edition</title>
+    <title>Death Cube - Final Fixed</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        body { margin: 0; overflow: hidden; background: #050510; touch-action: none; font-family: 'Arial Black', sans-serif; }
-        #ui { position: fixed; top: 10px; width: 100%; text-align: center; color: #fff; font-size: 18px; z-index: 5; pointer-events: none; text-shadow: 0 0 5px #000; }
-        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
-        h1 { color: #f05; font-size: 45px; text-shadow: 0 0 20px #f05; margin: 0; }
-        .btn { padding: 20px 60px; font-size: 22px; background: #0fcc; border: 4px solid #fff; border-radius: 20px; font-weight: bold; cursor: pointer; color: #000; box-shadow: 0 0 20px #0fcc; }
+        body { margin: 0; overflow: hidden; background: #0a0a1a; touch-action: none; font-family: sans-serif; }
+        #stats { position: fixed; top: 10px; width: 100%; text-align: center; color: #0ff; font-weight: bold; z-index: 10; pointer-events: none; }
+        .menu { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 20; }
+        button { padding: 15px 40px; font-size: 20px; background: #0fcc; border: none; border-radius: 10px; cursor: pointer; box-shadow: 0 0 15px #0fcc; }
     </style>
 </head>
 <body>
 
-    <div id="ui">LVL: <span id="lvlNum">1</span> | <span id="percent">0</span>%</div>
+    <div id="stats">NIVEL 1 | <span id="prog">0</span>%</div>
 
-    <div id="menu" class="overlay">
-        <h1>DEATH CUBE</h1>
-        <div style="color:#0fcc; margin-bottom:20px;">VERSION FINAL - BY OBET</div>
-        <button class="btn" onclick="initLevel()">START GAME</button>
+    <div id="startMenu" class="menu">
+        <h1 style="color:#f05; font-size: 40px;">DEATH CUBE</h1>
+        <p style="color:#fff;">ERRORES CORREGIDOS ✓</p>
+        <button onclick="startGame()">EMPEZAR</button>
     </div>
 
-    <div id="victory" class="overlay" style="display:none">
-        <h1 style="color: #0fcc">COMPLETE!</h1>
-        <button class="btn" onclick="nextLvl()">NEXT LEVEL</button>
-    </div>
-
-    <canvas id="gameCanvas"></canvas>
+    <canvas id="g"></canvas>
 
 <script>
-    const canvas = document.getElementById('gameCanvas');
+    const canvas = document.getElementById('g');
     const ctx = canvas.getContext('2d');
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    const voidLine = canvas.height / 2 + 120; 
-    let currentLvl = 1;
-    let distance = 0;
-    let isPressing = false;
-    let gameActive = false;
-    let levelStarted = false;
-    const step = 280; 
-
-    const player = { x: 150, y: voidLine - 100, dy: 0, rot: 0, onG: true };
-
-    // Estructura de nivel: [tipo, alturaY]
-    const safeStart = [[1,0],[1,0],[1,0]];
+    const floorY = canvas.height / 2 + 100;
+    let dist = 0;
+    let active = false;
+    let pressing = false;
     
-    function createLevel(pattern) {
-        let level = [...safeStart];
-        for(let i=0; i<15; i++) { level = level.concat(pattern); }
-        level.push([1,0],[1,0],[1,0]);
-        return level;
-    }
+    const player = { x: 100, y: floorY - 40, dy: 0, rot: 0, size: 40 };
 
-    const levels = {
-        1: createLevel([[1,30],[2,50],[1,0],[1,60],[2,80],[1,60]]),
-        2: createLevel([[1,0],[2,60],[1,90],[2,20],[1,40],[2,100]]),
-        3: createLevel([[1,100],[2,150],[1,0],[2,40],[1,120],[2,180]])
-    };
+    // Nivel 1: [tipo, altura_bloque] -> 1: Bloque, 2: Sierra
+    const level1 = [
+        [1,0],[1,0],[1,0], // Inicio seguro
+        [1,30],[2,50],[1,60],[1,60],[2,40],[1,0],
+        [1,40],[2,100],[1,120],[1,120],[2,20],[1,0],
+        [1,0],[2,50],[1,50],[1,50],[2,0],[1,0]
+    ];
 
-    function initLevel() {
-        document.getElementById('menu').style.display = 'none';
-        document.getElementById('victory').style.display = 'none';
-        distance = 0;
-        levelStarted = false;
-        player.y = voidLine - 100;
+    function startGame() {
+        document.getElementById('startMenu').style.display = 'none';
+        dist = 0;
+        player.y = floorY - 40;
         player.dy = 0;
-        player.rot = 0;
-        player.onG = true;
-        gameActive = true;
-    }
-
-    function nextLvl() {
-        currentLvl = currentLvl < 3 ? currentLvl + 1 : 1;
-        initLevel();
+        active = true;
     }
 
     function update() {
-        if (!gameActive) return;
-        if (!levelStarted) {
-            if (isPressing) { levelStarted = true; player.dy = -19; }
-            return;
-        }
+        if (!active) return;
 
-        distance += 9; // Velocidad fluida
-        player.dy += 1.1; // Gravedad ajustada para saltos largos
+        dist += 8; // Velocidad de avance
+        player.dy += 1.1; // Gravedad
         player.y += player.dy;
 
-        const lvlData = levels[currentLvl];
-        const totalDist = (lvlData.length - 1) * step;
-        let progress = Math.min(Math.floor((distance/totalDist)*100), 100);
+        // Si cae al vacío
+        if (player.y > canvas.height) startGame();
 
-        if (distance > totalDist + 300) {
-            gameActive = false;
-            document.getElementById('victory').style.display = 'flex';
-            return;
-        }
+        let onGround = false;
+        const step = 250; // Espacio entre bloques calibrado
 
-        if (player.y > voidLine + 200) initLevel();
+        level1.forEach((obj, i) => {
+            let bx = 100 + (i * step) - dist;
+            let by = floorY - 40 - obj[1];
 
-        let supported = false;
-        lvlData.forEach((obj, i) => {
-            let ox = 150 + (i * step) - distance;
-            let oy = voidLine - 50 - obj[1];
-            
-            // Colisión con Bloques (Ancho de 80px para aterrizar fácil)
-            if (ox > player.x - 80 && ox < player.x + 60) {
-                if (obj[0] === 1) {
-                    // Detectar si el cubo cae sobre el bloque
-                    if (player.y + 40 >= oy && player.y + 40 <= oy + 40 && player.dy >= 0) {
-                        player.y = oy - 40;
+            // Colisión lógica
+            if (bx > player.x - 60 && bx < player.x + 60) {
+                if (obj[0] === 1) { // Bloque
+                    // Aterrizar arriba (con margen de error para que no "traspase")
+                    if (player.y + player.size > by && player.y + player.size < by + 30 && player.dy >= 0) {
+                        player.y = by - player.size;
                         player.dy = 0;
-                        supported = true;
+                        onGround = true;
                     } 
-                    // Colisión frontal suavizada
-                    else if (player.x + 35 > ox + 20 && player.y + 35 > oy + 10 && player.y < oy + 40) {
-                        initLevel();
+                    // Chocar de frente (solo si estás muy abajo)
+                    else if (player.x + player.size > bx + 10 && player.y + player.size > by + 10 && player.y < by + 40) {
+                        startGame();
                     }
-                } else if (obj[0] === 2) { // SIERRA
-                    let sX = ox + 40;
-                    let sY = oy + 30;
-                    let d = Math.sqrt((player.x+20 - sX)**2 + (player.y+20 - sY)**2);
-                    if (d < 25) initLevel();
+                } else { // Sierra
+                    let dx = (player.x + 20) - (bx + 30);
+                    let dy = (player.y + 20) - (by + 30);
+                    if (Math.sqrt(dx*dx + dy*dy) < 25) startGame();
                 }
             }
         });
 
-        if (supported) {
-            player.rot = Math.round(player.rot/(Math.PI/2))*(Math.PI/2);
-            if (isPressing) player.dy = -19;
+        if (onGround) {
+            player.rot = 0;
+            if (pressing) player.dy = -20; // Salto potente
         } else {
-            player.rot += 0.22;
+            player.rot += 0.2;
         }
 
-        document.getElementById('lvlNum').innerText = currentLvl;
-        document.getElementById('percent').innerText = progress;
+        document.getElementById('prog').innerText = Math.min(Math.floor((dist/5000)*100), 100);
     }
 
     function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Suelo de referencia
-        ctx.strokeStyle = '#f05'; ctx.setLineDash([5, 15]);
-        ctx.beginPath(); ctx.moveTo(0, voidLine); ctx.lineTo(canvas.width, voidLine); ctx.stroke();
-        ctx.setLineDash([]);
+        ctx.fillStyle = '#0a0a1a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        const lvlData = levels[currentLvl];
-        lvlData.forEach((obj, i) => {
-            let ox = 150 + (i * step) - distance;
-            if (ox < -100 || ox > canvas.width + 100) return;
-            let oy = voidLine - 50 - obj[1];
-            
+        // Suelo falso
+        ctx.strokeStyle = '#333';
+        ctx.beginPath(); ctx.moveTo(0, floorY); ctx.lineTo(canvas.width, floorY); ctx.stroke();
+
+        const step = 250;
+        level1.forEach((obj, i) => {
+            let bx = 100 + (i * step) - dist;
+            if (bx < -100 || bx > canvas.width) return;
+            let by = floorY - 40 - obj[1];
+
             if (obj[0] === 1) {
-                ctx.fillStyle = '#111'; ctx.strokeStyle = '#0ff'; ctx.lineWidth = 3;
-                ctx.fillRect(ox, oy, 80, 50); ctx.strokeRect(ox, oy, 80, 50);
+                ctx.fillStyle = '#111'; ctx.strokeStyle = '#0ff';
+                ctx.fillRect(bx, by, 70, 40); ctx.strokeRect(bx, by, 70, 40);
             } else {
-                ctx.save(); ctx.translate(ox + 40, oy + 30); ctx.rotate(Date.now()*0.01);
-                ctx.fillStyle = '#f30';
-                for(let j=0; j<8; j++){
-                    ctx.rotate(Math.PI/4);
-                    ctx.beginPath(); ctx.moveTo(0,-25); ctx.lineTo(10,0); ctx.lineTo(-10,0); ctx.fill();
-                }
-                ctx.restore();
+                ctx.fillStyle = '#f05';
+                ctx.beginPath(); ctx.arc(bx+35, by+20, 15, 0, Math.PI*2); ctx.fill();
             }
         });
 
         // Jugador
-        ctx.save(); ctx.translate(player.x+20, player.y+20); ctx.rotate(player.rot);
-        ctx.fillStyle = '#0fcc'; ctx.fillRect(-20, -20, 40, 40);
+        ctx.save();
+        ctx.translate(player.x + 20, player.y + 20);
+        ctx.rotate(player.rot);
+        ctx.fillStyle = '#0fcc';
+        ctx.fillRect(-20, -20, 40, 40);
+        ctx.strokeRect(-20, -20, 40, 40);
         ctx.restore();
 
         update();
         requestAnimationFrame(draw);
     }
 
-    window.onpointerdown = () => isPressing = true;
-    window.onpointerup = () => isPressing = false;
+    window.onpointerdown = () => pressing = true;
+    window.onpointerup = () => pressing = false;
     draw();
 </script>
 </body>
