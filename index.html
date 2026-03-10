@@ -1,134 +1,97 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Neon Dash Music Edition</title>
+    <title>Neon Dash Ultra Lite</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body { margin: 0; overflow: hidden; background: #000; touch-action: none; font-family: sans-serif; }
-        #ui { position: fixed; top: 20px; width: 100%; text-align: center; color: #fff; font-size: 24px; pointer-events: none; }
-        #menu { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #050510; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
-        #start-btn { padding: 20px 60px; font-size: 30px; background: #00ffcc; border: none; border-radius: 15px; font-weight: bold; }
+        #percent { position: fixed; top: 10px; width: 100%; text-align: center; color: #0ff; font-size: 20px; font-weight: bold; pointer-events: none; }
     </style>
 </head>
 <body>
-    <div id="ui">PERCENT: <span id="percent">0</span>%</div>
-    <div id="menu">
-        <h1 style="color:white">NEON DASH + BEAT</h1>
-        <button id="start-btn" onclick="startGame()">START MUSIC</button>
-    </div>
+    <div id="percent">0%</div>
     <canvas id="gameCanvas"></canvas>
 
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-    const menu = document.getElementById('menu');
-    const ui = document.getElementById('ui');
-
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    let audioCtx;
-    let gameActive = false;
-    let isPressing = false;
-    let distance = 0;
     const groundY = canvas.height / 2 + 100;
+    let distance = 0;
+    let isPressing = false;
 
-    // --- GENERADOR DE MÚSICA TECHNO ---
-    function playBeat() {
-        if (!gameActive) return;
-        // Sonido de Bombo (Kick) cada medio segundo
-        if (Math.floor(distance) % 100 < 10) {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.1);
-        }
-    }
-
-    function playJumpSound() {
-        if (!audioCtx) return;
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(440, audioCtx.currentTime);
-        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-        osc.connect(gain); gain.connect(audioCtx.destination);
-        osc.start(); osc.stop(audioCtx.currentTime + 0.1);
-    }
-
-    const player = { x: 150, y: groundY - 40, w: 40, h: 40, dy: 0, rotation: 0, onGround: false };
-    const levelData = [0,0,0,2,0,1,0,2,0,1,1,2,0,2,2,0,1,1,2,0,2,2,1,1,2,2,2,0,1,1];
-    const obstacles = levelData.map((type, i) => ({ x: 800 + (i * 200), y: groundY, type }));
-
-    function startGame() {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        menu.style.display = 'none';
-        ui.style.display = 'block';
-        gameActive = true;
-        animate();
-    }
-
-    function resetPlayer() {
-        distance = 0; player.y = groundY - 40; player.dy = 0; player.rotation = 0; gameActive = true;
-    }
+    const player = { x: 100, y: groundY-40, dy: 0, onGround: false, rot: 0 };
+    const level = [0,0,2,0,1,0,2,1,1,2,0,1,2,2,0,1,1,2,0,2,1,1,2,2,0,2,2,1,2,2,2,0,1,1,1,2,2,2,2];
 
     function update() {
-        if (!gameActive) return;
         distance += 8.5;
         player.dy += 1.1;
         player.y += player.dy;
-        playBeat(); // Tocar el ritmo
 
-        if (player.y >= groundY - 40) { player.y = groundY - 40; player.dy = 0; player.onGround = true; }
-        else player.onGround = false;
+        if (player.y >= groundY - 40) {
+            player.y = groundY - 40;
+            player.dy = 0;
+            player.onGround = true;
+            player.rot = Math.round(player.rot / (Math.PI/2)) * (Math.PI/2);
+        } else {
+            player.onGround = false;
+            player.rot += 0.18;
+        }
 
-        obstacles.forEach(obj => {
-            let ox = obj.x - distance;
-            if (ox > 100 && ox < 200) {
-                if (obj.type === 2 && player.y > groundY - 60) die();
-                if (obj.type === 1) {
-                    if (player.y > groundY - 95 && player.y < groundY - 70) { player.y = groundY-90; player.dy=0; player.onGround=true; }
-                    else if (player.y > groundY - 60) die();
+        if (player.onGround && isPressing) {
+            player.dy = -16;
+            player.onGround = false;
+        }
+
+        // Colisiones
+        level.forEach((type, i) => {
+            let ox = 800 + (i * 200) - distance;
+            if (ox > 80 && ox < 140) {
+                if (type === 2 && player.y > groundY - 60) distance = 0; // Reset si muere
+                if (type === 1) {
+                    if (player.y > groundY - 95 && player.y < groundY - 70) {
+                        player.y = groundY - 90; player.dy = 0; player.onGround = true;
+                    } else if (player.y > groundY - 60) distance = 0;
+                }
+            }
+        });
+        document.getElementById('percent').innerText = Math.floor(distance / 80) + "%";
+    }
+
+    function draw() {
+        ctx.fillStyle = '#050510'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#0ff'; ctx.fillRect(0, groundY, canvas.width, 2);
+
+        level.forEach((type, i) => {
+            let ox = 800 + (i * 200) - distance;
+            if (ox > -100 && ox < canvas.width) {
+                if (type === 1) {
+                    ctx.fillStyle = '#1a1a1a'; ctx.strokeStyle = '#0ff';
+                    ctx.fillRect(ox, groundY-50, 50, 50); ctx.strokeRect(ox, groundY-50, 50, 50);
+                } else if (type === 2) {
+                    ctx.fillStyle = '#f05'; ctx.beginPath();
+                    ctx.moveTo(ox, groundY); ctx.lineTo(ox+25, groundY-50); ctx.lineTo(ox+50, groundY); ctx.fill();
                 }
             }
         });
 
-        if (player.onGround && isPressing) { player.dy = -16; player.onGround = false; playJumpSound(); }
-        if (!player.onGround) player.rotation += 0.18;
-        else player.rotation = Math.round(player.rotation / (Math.PI/2)) * (Math.PI/2);
-        
-        document.getElementById('percent').innerText = Math.floor(distance / 70);
-    }
-
-    function die() { gameActive = false; setTimeout(resetPlayer, 400); }
-
-    function animate() {
-        ctx.fillStyle = '#050510'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#0ff'; ctx.fillRect(0, groundY, canvas.width, 2);
-        
-        obstacles.forEach(obj => {
-            let ox = obj.x - distance;
-            if (obj.type === 1) {
-                ctx.fillStyle = '#1a1a1a'; ctx.strokeStyle = '#0ff';
-                ctx.fillRect(ox, groundY - 50, 50, 50); ctx.strokeRect(ox, groundY - 50, 50, 50);
-            } else if (obj.type === 2) {
-                ctx.fillStyle = '#ff0055'; ctx.beginPath();
-                ctx.moveTo(ox, groundY); ctx.lineTo(ox + 25, groundY - 50); ctx.lineTo(ox + 50, groundY); ctx.fill();
-            }
-        });
-
-        ctx.save(); ctx.translate(player.x+20, player.y+20); ctx.rotate(player.rotation);
-        ctx.fillStyle = '#00ffcc'; ctx.fillRect(-20, -20, 40, 40); ctx.restore();
+        ctx.save();
+        ctx.translate(player.x+20, player.y+20);
+        ctx.rotate(player.rot);
+        ctx.fillStyle = '#0fcc';
+        ctx.fillRect(-20, -20, 40, 40);
+        ctx.restore();
 
         update();
-        if (gameActive) requestAnimationFrame(animate);
+        requestAnimationFrame(draw);
     }
 
     window.addEventListener('touchstart', (e) => { isPressing = true; e.preventDefault(); }, {passive: false});
-    window.addEventListener('touchend', () => isPressing = false);
+    window.addEventListener('touchend', () => { isPressing = false; });
+
+    draw();
 </script>
 </body>
 </html>
