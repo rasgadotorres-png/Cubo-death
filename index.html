@@ -1,37 +1,53 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Neon Dash: 10 Levels</title>
+    <title>Neon Dash - 100% Reliable</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body { margin: 0; overflow: hidden; background: #000; touch-action: none; font-family: 'Arial Black', sans-serif; }
-        #ui { position: fixed; top: 10px; width: 100%; text-align: center; color: #0ff; font-size: 20px; z-index: 10; pointer-events: none; }
+        #ui { position: fixed; top: 10px; width: 100%; text-align: center; color: #0ff; font-size: 18px; z-index: 10; pointer-events: none; }
         
-        /* Pantallas de Menú */
-        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5, 5, 20, 0.9); 
-                    display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
-        h1 { color: #0fcc; font-size: 50px; text-shadow: 0 0 20px #0fcc; margin: 0; }
-        h2 { color: #fff; margin: 10px; }
-        button { padding: 15px 50px; font-size: 24px; background: #f05; color: white; border: none; border-radius: 10px; 
-                 box-shadow: 0 0 15px #f05; font-weight: bold; cursor: pointer; }
-        button:active { transform: scale(0.9); }
+        /* Pantallas de Menú con Botones HTML Reales */
+        .overlay { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(5, 5, 20, 0.95); 
+            display: flex; flex-direction: column; justify-content: center; align-items: center; 
+            z-index: 1000; 
+        }
+
+        h1 { color: #0fcc; font-size: 45px; text-shadow: 0 0 20px #0fcc; margin-bottom: 30px; }
+        
+        /* Estilo del Botón Blindado */
+        .btn-real {
+            padding: 20px 60px;
+            font-size: 28px;
+            background-color: #f05;
+            color: white;
+            border: 4px solid white;
+            border-radius: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 0 20px #f05;
+            -webkit-appearance: none; /* Quita estilos de sistema en iOS/Android */
+        }
+        
+        .btn-real:active { background-color: #b04; transform: scale(0.95); }
     </style>
 </head>
 <body>
 
     <div id="ui">
-        LEVEL: <span id="lvlNum">1</span> | PROGRESS: <span id="percent">0</span>%
+        LVL: <span id="lvlNum">1</span> | <span id="percent">0</span>%
     </div>
 
     <div id="menu" class="overlay">
         <h1>NEON DASH</h1>
-        <h2 id="menuTxt">Ready?</h2>
-        <button onclick="startLevel()">START GAME</button>
+        <button class="btn-real" id="startBtn">START GAME</button>
     </div>
 
     <div id="victory" class="overlay" style="display:none">
         <h1 style="color: #0fcc">LEVEL COMPLETE!</h1>
-        <button onclick="nextLevel()">NEXT LEVEL</button>
+        <button class="btn-real" id="nextBtn">NEXT LEVEL</button>
     </div>
 
     <canvas id="gameCanvas"></canvas>
@@ -52,22 +68,21 @@
     const player = { x: 150, y: groundY - 40, w: 40, h: 40, dy: 0, rot: 0, onGround: false };
     const particles = [];
 
-    // --- DEFINICIÓN DE 10 NIVELES ---
-    // 0: Vacío, 1: Bloque, 2: Pico
     const allLevels = {
         1: [0,0,2,0,1,0,2,2,0,1,1,0,2,0,0,0],
         2: [0,2,2,0,1,1,0,2,0,2,1,0,2,2,2,0,0],
         3: [0,2,0,1,2,0,1,1,2,2,0,1,1,2,2,2,0,0],
-        4: [0,1,1,2,0,1,2,1,1,2,2,1,1,2,2,2,0,0], // Más difícil desde aquí
+        4: [0,1,1,2,0,1,2,1,1,2,2,1,1,2,2,2,0,0],
         5: [0,2,2,2,0,1,1,1,2,0,2,2,1,1,2,2,0,0],
         6: [0,1,2,1,2,1,2,0,1,1,2,2,2,1,1,1,0,0],
         7: [0,2,2,0,2,2,0,1,1,1,2,2,2,2,1,1,0,0],
         8: [0,1,1,1,2,2,2,2,1,1,1,2,2,2,2,0,0,0],
         9: [0,2,1,2,1,2,1,2,1,2,2,2,2,2,2,0,0,0],
-        10: [0,2,2,2,1,1,1,2,2,2,1,1,1,2,2,2,2,2,2] // El Jefe Final
+        10: [0,2,2,2,1,1,1,2,2,2,1,1,1,2,2,2,2,2,2]
     };
 
-    function startLevel() {
+    // FUNCIÓN DE INICIO 100% SEGURA
+    function launchGame() {
         document.getElementById('menu').style.display = 'none';
         document.getElementById('victory').style.display = 'none';
         document.getElementById('lvlNum').innerText = currentLvl;
@@ -75,18 +90,17 @@
         player.y = groundY - 40;
         player.dy = 0;
         player.rot = 0;
-        speed = 8.5 + (currentLvl * 0.5); // Sube la velocidad por nivel
+        speed = 8.5 + (currentLvl * 0.5);
         gameActive = true;
     }
 
-    function nextLevel() {
+    // Vinculamos los botones HTML
+    document.getElementById('startBtn').onclick = launchGame;
+    document.getElementById('nextBtn').onclick = function() {
         currentLvl++;
-        if (currentLvl > 10) {
-            alert("¡ERES UN DIOS! Pasaste los 10 niveles.");
-            currentLvl = 1;
-        }
-        startLevel();
-    }
+        if (currentLvl > 10) { alert("¡DIOS DEL NEON! Pasaste todo."); currentLvl = 1; }
+        launchGame();
+    };
 
     function update() {
         if (!gameActive) return;
@@ -95,7 +109,6 @@
         player.dy += 1.1;
         player.y += player.dy;
 
-        // Partículas
         if (Math.random() > 0.4) particles.push({x: player.x, y: player.y+20, s: Math.random()*10+5, o: 1});
         for (let i = particles.length-1; i>=0; i--) {
             particles[i].o -= 0.05;
@@ -117,11 +130,11 @@
         levelData.forEach((type, i) => {
             let ox = 800 + (i * 280) - distance;
             if (ox > player.x - 60 && ox < player.x + 60) {
-                if (type === 1) { // Bloque
+                if (type === 1) {
                     if (player.y+40 <= groundY-30 && player.y+40+player.dy >= groundY-50 && player.x+40 > ox+5 && player.x < ox+45) {
                         player.y = groundY-90; player.dy = 0; standingOn = "block";
                     } else if (player.x+40 > ox+5 && player.x < ox+45 && player.y+40 > groundY-48) distance = 0;
-                } else if (type === 2) { // Pico
+                } else if (type === 2) {
                     if (player.x+28 > ox && player.x+12 < ox+50 && player.y+40 > groundY-35) distance = 0;
                 }
             }
@@ -138,9 +151,7 @@
 
     function draw() {
         ctx.fillStyle = '#050510'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
         particles.forEach(p => { ctx.fillStyle = `rgba(0,255,204,${p.o})`; ctx.fillRect(p.x-distance*0.1, p.y, p.s, p.s); });
-        
         ctx.fillStyle = '#0ff'; ctx.fillRect(0, groundY, canvas.width, 2);
 
         const levelData = allLevels[currentLvl];
@@ -164,8 +175,12 @@
         requestAnimationFrame(draw);
     }
 
-    window.addEventListener('touchstart', (e) => { isPressing = true; e.preventDefault(); }, {passive: false});
+    // Salto para la pantalla (solo cuando el juego está activo)
+    window.addEventListener('touchstart', (e) => { 
+        if (gameActive) { isPressing = true; e.preventDefault(); }
+    }, {passive: false});
     window.addEventListener('touchend', () => isPressing = false);
+
     draw();
 </script>
 </body>
