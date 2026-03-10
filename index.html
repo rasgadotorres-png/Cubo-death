@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Neon Dash Ultra Lite</title>
+    <title>Neon Dash Pro Fixed</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        body { margin: 0; overflow: hidden; background: #000; touch-action: none; font-family: sans-serif; }
-        #percent { position: fixed; top: 10px; width: 100%; text-align: center; color: #0ff; font-size: 20px; font-weight: bold; pointer-events: none; }
+        body { margin: 0; overflow: hidden; background: #000; touch-action: none; font-family: 'Arial Black', sans-serif; }
+        #percent { position: fixed; top: 10px; width: 100%; text-align: center; color: #0ff; font-size: 24px; pointer-events: none; text-shadow: 0 0 10px #0ff; }
     </style>
 </head>
 <body>
@@ -21,43 +21,75 @@
     const groundY = canvas.height / 2 + 100;
     let distance = 0;
     let isPressing = false;
+    let audioCtx;
 
-    const player = { x: 100, y: groundY-40, dy: 0, onGround: false, rot: 0 };
-    const level = [0,0,2,0,1,0,2,1,1,2,0,1,2,2,0,1,1,2,0,2,1,1,2,2,0,2,2,1,2,2,2,0,1,1,1,2,2,2,2];
+    const player = { x: 150, y: groundY - 40, w: 40, h: 40, dy: 0, onGround: false, rot: 0 };
+    const level = [0,0,2,0,1,0,2,0,1,1,2,0,2,2,0,1,1,1,2,0,2,2,1,0,1,2,2];
+
+    // Función de sonido reforzada
+    function playSfx() {
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+        g.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        osc.connect(g); g.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+    }
 
     function update() {
         distance += 8.5;
         player.dy += 1.1;
         player.y += player.dy;
 
-        if (player.y >= groundY - 40) {
-            player.y = groundY - 40;
+        let onAnything = false;
+
+        // Suelo normal
+        if (player.y >= groundY - player.h) {
+            player.y = groundY - player.h;
             player.dy = 0;
-            player.onGround = true;
-            player.rot = Math.round(player.rot / (Math.PI/2)) * (Math.PI/2);
-        } else {
-            player.onGround = false;
-            player.rot += 0.18;
+            onAnything = true;
         }
 
-        if (player.onGround && isPressing) {
-            player.dy = -16;
-            player.onGround = false;
-        }
-
-        // Colisiones
+        // Lógica de Bloques y Picos
         level.forEach((type, i) => {
-            let ox = 800 + (i * 200) - distance;
-            if (ox > 80 && ox < 140) {
-                if (type === 2 && player.y > groundY - 60) distance = 0; // Reset si muere
-                if (type === 1) {
-                    if (player.y > groundY - 95 && player.y < groundY - 70) {
-                        player.y = groundY - 90; player.dy = 0; player.onGround = true;
-                    } else if (player.y > groundY - 60) distance = 0;
+            let ox = 800 + (i * 250) - distance;
+            if (ox > player.x - 60 && ox < player.x + 60) {
+                if (type === 1) { // BLOQUE
+                    // Detectar si estamos cayendo sobre el bloque
+                    if (player.y + player.h > groundY - 50 && player.y + player.h < groundY - 20 && player.dy >= 0) {
+                        player.y = groundY - 50 - player.h;
+                        player.dy = 0;
+                        onAnything = true;
+                    } 
+                    // Si no estamos arriba, pero estamos chocando de lado
+                    else if (player.x + player.w > ox && player.x < ox + 50 && player.y + player.h > groundY - 45) {
+                        distance = 0; // Muere
+                    }
+                } else if (type === 2) { // PICO
+                    if (player.x + player.w - 10 > ox && player.x + 10 < ox + 50 && player.y + player.h > groundY - 40) {
+                        distance = 0; // Muere
+                    }
                 }
             }
         });
-        document.getElementById('percent').innerText = Math.floor(distance / 80) + "%";
+
+        player.onGround = onAnything;
+
+        if (player.onGround) {
+            player.rot = Math.round(player.rot / (Math.PI/2)) * (Math.PI/2);
+            if (isPressing) {
+                player.dy = -16;
+                player.onGround = false;
+                playSfx();
+            }
+        } else {
+            player.rot += 0.18;
+        }
+
+        document.getElementById('percent').innerText = Math.floor(distance / 100) + "%";
     }
 
     function draw() {
@@ -65,33 +97,30 @@
         ctx.fillStyle = '#0ff'; ctx.fillRect(0, groundY, canvas.width, 2);
 
         level.forEach((type, i) => {
-            let ox = 800 + (i * 200) - distance;
-            if (ox > -100 && ox < canvas.width) {
-                if (type === 1) {
-                    ctx.fillStyle = '#1a1a1a'; ctx.strokeStyle = '#0ff';
-                    ctx.fillRect(ox, groundY-50, 50, 50); ctx.strokeRect(ox, groundY-50, 50, 50);
-                } else if (type === 2) {
-                    ctx.fillStyle = '#f05'; ctx.beginPath();
-                    ctx.moveTo(ox, groundY); ctx.lineTo(ox+25, groundY-50); ctx.lineTo(ox+50, groundY); ctx.fill();
-                }
+            let ox = 800 + (i * 250) - distance;
+            if (type === 1) {
+                ctx.fillStyle = '#1a1a1a'; ctx.strokeStyle = '#0ff';
+                ctx.fillRect(ox, groundY-50, 50, 50); ctx.strokeRect(ox, groundY-50, 50, 50);
+            } else if (type === 2) {
+                ctx.fillStyle = '#f05'; ctx.beginPath();
+                ctx.moveTo(ox, groundY); ctx.lineTo(ox+25, groundY-50); ctx.lineTo(ox+50, groundY); ctx.fill();
             }
         });
 
         ctx.save();
-        ctx.translate(player.x+20, player.y+20);
+        ctx.translate(player.x + player.w/2, player.y + player.h/2);
         ctx.rotate(player.rot);
-        ctx.fillStyle = '#0fcc';
-        ctx.fillRect(-20, -20, 40, 40);
+        ctx.fillStyle = '#0fcc'; ctx.shadowBlur = 10; ctx.shadowColor = '#0fcc';
+        ctx.fillRect(-player.w/2, -player.h/2, player.w, player.h);
         ctx.restore();
 
         update();
         requestAnimationFrame(draw);
     }
 
-    window.addEventListener('touchstart', (e) => { isPressing = true; e.preventDefault(); }, {passive: false});
-    window.addEventListener('touchend', () => { isPressing = false; });
-
-    draw();
-</script>
-</body>
-</html>
+    // Activar audio con el primer toque
+    window.addEventListener('touchstart', (e) => {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx
