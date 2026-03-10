@@ -1,22 +1,39 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Neon Dash - Victory Edition</title>
+    <title>Neon Dash: 10 Levels</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        body { margin: 0; overflow: hidden; background: #000; touch-action: none; font-family: sans-serif; }
-        #percent { position: fixed; top: 10px; width: 100%; text-align: center; color: #0ff; font-size: 22px; font-weight: bold; pointer-events: none; }
-        #victory { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,255,200,0.2); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 200; }
-        h2 { color: #fff; font-size: 40px; text-shadow: 0 0 20px #000; margin: 0; }
-        p { color: #fff; font-size: 18px; }
+        body { margin: 0; overflow: hidden; background: #000; touch-action: none; font-family: 'Arial Black', sans-serif; }
+        #ui { position: fixed; top: 10px; width: 100%; text-align: center; color: #0ff; font-size: 20px; z-index: 10; pointer-events: none; }
+        
+        /* Pantallas de Menú */
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5, 5, 20, 0.9); 
+                    display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
+        h1 { color: #0fcc; font-size: 50px; text-shadow: 0 0 20px #0fcc; margin: 0; }
+        h2 { color: #fff; margin: 10px; }
+        button { padding: 15px 50px; font-size: 24px; background: #f05; color: white; border: none; border-radius: 10px; 
+                 box-shadow: 0 0 15px #f05; font-weight: bold; cursor: pointer; }
+        button:active { transform: scale(0.9); }
     </style>
 </head>
 <body>
-    <div id="percent">0%</div>
-    <div id="victory">
-        <h2>LEVEL COMPLETE!</h2>
-        <p>Toca para reiniciar</p>
+
+    <div id="ui">
+        LEVEL: <span id="lvlNum">1</span> | PROGRESS: <span id="percent">0</span>%
     </div>
+
+    <div id="menu" class="overlay">
+        <h1>NEON DASH</h1>
+        <h2 id="menuTxt">Ready?</h2>
+        <button onclick="startLevel()">START GAME</button>
+    </div>
+
+    <div id="victory" class="overlay" style="display:none">
+        <h1 style="color: #0fcc">LEVEL COMPLETE!</h1>
+        <button onclick="nextLevel()">NEXT LEVEL</button>
+    </div>
+
     <canvas id="gameCanvas"></canvas>
 
 <script>
@@ -26,75 +43,108 @@
     canvas.height = window.innerHeight;
 
     const groundY = canvas.height / 2 + 100;
-    const speed = 8.5;
-    const gravity = 1.1;
+    let currentLvl = 1;
     let distance = 0;
     let isPressing = false;
-    let gameWon = false;
+    let gameActive = false;
+    let speed = 8.5;
 
     const player = { x: 150, y: groundY - 40, w: 40, h: 40, dy: 0, rot: 0, onGround: false };
-    const level = [0,0,2,0,0,1,0,0,2,2,0,0,1,1,0,0,2,0,1,0,2,2,0,0,1,1,1,0,2,2,2,0,0,0]; // 0 al final para espacio
-    const totalDist = level.length * 280; // Distancia total del nivel
+    const particles = [];
+
+    // --- DEFINICIÓN DE 10 NIVELES ---
+    // 0: Vacío, 1: Bloque, 2: Pico
+    const allLevels = {
+        1: [0,0,2,0,1,0,2,2,0,1,1,0,2,0,0,0],
+        2: [0,2,2,0,1,1,0,2,0,2,1,0,2,2,2,0,0],
+        3: [0,2,0,1,2,0,1,1,2,2,0,1,1,2,2,2,0,0],
+        4: [0,1,1,2,0,1,2,1,1,2,2,1,1,2,2,2,0,0], // Más difícil desde aquí
+        5: [0,2,2,2,0,1,1,1,2,0,2,2,1,1,2,2,0,0],
+        6: [0,1,2,1,2,1,2,0,1,1,2,2,2,1,1,1,0,0],
+        7: [0,2,2,0,2,2,0,1,1,1,2,2,2,2,1,1,0,0],
+        8: [0,1,1,1,2,2,2,2,1,1,1,2,2,2,2,0,0,0],
+        9: [0,2,1,2,1,2,1,2,1,2,2,2,2,2,2,0,0,0],
+        10: [0,2,2,2,1,1,1,2,2,2,1,1,1,2,2,2,2,2,2] // El Jefe Final
+    };
+
+    function startLevel() {
+        document.getElementById('menu').style.display = 'none';
+        document.getElementById('victory').style.display = 'none';
+        document.getElementById('lvlNum').innerText = currentLvl;
+        distance = 0;
+        player.y = groundY - 40;
+        player.dy = 0;
+        player.rot = 0;
+        speed = 8.5 + (currentLvl * 0.5); // Sube la velocidad por nivel
+        gameActive = true;
+    }
+
+    function nextLevel() {
+        currentLvl++;
+        if (currentLvl > 10) {
+            alert("¡ERES UN DIOS! Pasaste los 10 niveles.");
+            currentLvl = 1;
+        }
+        startLevel();
+    }
 
     function update() {
-        if (gameWon) return;
+        if (!gameActive) return;
 
         distance += speed;
-        player.dy += gravity;
+        player.dy += 1.1;
         player.y += player.dy;
 
-        // Verificar si llegaste al final
+        // Partículas
+        if (Math.random() > 0.4) particles.push({x: player.x, y: player.y+20, s: Math.random()*10+5, o: 1});
+        for (let i = particles.length-1; i>=0; i--) {
+            particles[i].o -= 0.05;
+            if (particles[i].o <= 0) particles.splice(i,1);
+        }
+
+        const levelData = allLevels[currentLvl];
+        const totalDist = levelData.length * 280;
+
         if (distance > totalDist + 500) {
-            gameWon = true;
+            gameActive = false;
             document.getElementById('victory').style.display = 'flex';
             return;
         }
 
         let standingOn = null;
-        if (player.y > groundY - player.h) {
-            player.y = groundY - player.h;
-            player.dy = 0;
-            standingOn = "ground";
-        }
+        if (player.y > groundY - 40) { player.y = groundY-40; player.dy = 0; standingOn = "ground"; }
 
-        level.forEach((type, i) => {
+        levelData.forEach((type, i) => {
             let ox = 800 + (i * 280) - distance;
             if (ox > player.x - 60 && ox < player.x + 60) {
-                if (type === 1) { // BLOQUE
-                    if (player.y + player.h <= groundY - 30 && player.y + player.h + player.dy >= groundY - 50 &&
-                        player.x + player.w > ox + 5 && player.x < ox + 45) {
-                        player.y = groundY - 50 - player.h;
-                        player.dy = 0;
-                        standingOn = "block";
-                    } else if (player.x + player.w > ox + 5 && player.x < ox + 45 && player.y + player.h > groundY - 48) {
-                        distance = 0; 
-                    }
-                } else if (type === 2) { // PICO
-                    if (player.x + player.w - 12 > ox && player.x + 12 < ox + 50 && player.y + player.h > groundY - 35) {
-                        distance = 0; 
-                    }
+                if (type === 1) { // Bloque
+                    if (player.y+40 <= groundY-30 && player.y+40+player.dy >= groundY-50 && player.x+40 > ox+5 && player.x < ox+45) {
+                        player.y = groundY-90; player.dy = 0; standingOn = "block";
+                    } else if (player.x+40 > ox+5 && player.x < ox+45 && player.y+40 > groundY-48) distance = 0;
+                } else if (type === 2) { // Pico
+                    if (player.x+28 > ox && player.x+12 < ox+50 && player.y+40 > groundY-35) distance = 0;
                 }
             }
         });
 
         player.onGround = (standingOn !== null);
         if (player.onGround) {
-            player.rot = Math.round(player.rot / (Math.PI/2)) * (Math.PI/2);
+            player.rot = Math.round(player.rot / 1.57) * 1.57;
             if (isPressing) { player.dy = -16.5; player.onGround = false; }
-        } else {
-            player.rot += 0.18;
-        }
+        } else player.rot += 0.18;
 
-        // Porcentaje real (sin pasar de 100)
-        let prog = Math.floor((distance / totalDist) * 100);
-        document.getElementById('percent').innerText = Math.min(prog, 100) + "%";
+        document.getElementById('percent').innerText = Math.min(Math.floor((distance/totalDist)*100), 100);
     }
 
     function draw() {
         ctx.fillStyle = '#050510'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        particles.forEach(p => { ctx.fillStyle = `rgba(0,255,204,${p.o})`; ctx.fillRect(p.x-distance*0.1, p.y, p.s, p.s); });
+        
         ctx.fillStyle = '#0ff'; ctx.fillRect(0, groundY, canvas.width, 2);
 
-        level.forEach((type, i) => {
+        const levelData = allLevels[currentLvl];
+        levelData.forEach((type, i) => {
             let ox = 800 + (i * 280) - distance;
             if (ox < -100 || ox > canvas.width) return;
             if (type === 1) {
@@ -106,22 +156,15 @@
             }
         });
 
-        ctx.save();
-        ctx.translate(player.x + 20, player.y + 20);
-        ctx.rotate(player.rot);
-        ctx.fillStyle = '#0fcc'; ctx.fillRect(-20, -20, 40, 40);
-        ctx.restore();
+        ctx.save(); ctx.translate(player.x+20, player.y+20); ctx.rotate(player.rot);
+        ctx.fillStyle = '#0fcc'; ctx.shadowBlur = 15; ctx.shadowColor = '#0fcc';
+        ctx.fillRect(-20, -20, 40, 40); ctx.restore();
 
         update();
         requestAnimationFrame(draw);
     }
 
-    window.addEventListener('touchstart', (e) => {
-        if (gameWon) location.reload();
-        isPressing = true;
-        e.preventDefault();
-    }, {passive: false});
-
+    window.addEventListener('touchstart', (e) => { isPressing = true; e.preventDefault(); }, {passive: false});
     window.addEventListener('touchend', () => isPressing = false);
     draw();
 </script>
